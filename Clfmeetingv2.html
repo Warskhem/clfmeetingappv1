@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>CLF Dashboard</title>
+
+<link rel="icon" href="data:,">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg: #1a221a;       
+  --bg2: #242e24;      
+  --bg3: #2e3a2e;      
+  --bg4: #3a483a;      
+  --text: #f5fcf5;     
+  --text2: #c5dac5;    
+  --text3: #8fb88f;    
+  --greenborder: #00c85355; 
+  --green: #00c853;
+  --green2: #00e676;
+  --green3: #69f0ae;
+  --greendim: rgba(0, 200, 83, 0.15);
+  --gold: #ffd600;
+  --amber: #ffb74d; 
+  --red: #ef5350;
+  --blue: #29b6f6;
+  --radius: 10px;
+  --radius2: 14px;
+}
+
+body{font-family:'Segoe UI',sans-serif;font-size:14px;color:var(--text);background:var(--bg);padding:14px;min-height:100vh}
+h1{font-size:22px;font-weight:600;color:var(--green2);letter-spacing:0.5px}
+h2{font-size:15px;font-weight:600;color:var(--text);margin-bottom:10px}
+h3{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px}
+
+.header{background:linear-gradient(135deg, #1c2b1c 0%, #263826 50%, #1a251a 100%);border:1px solid var(--greenborder);border-radius:var(--radius2);padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:relative;overflow:hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.2);}
+.header::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(0,200,83,0.15),transparent 70%)}
+.header-left{}
+.header-sub{font-size:12px;color:var(--text3);margin-top:3px}
+.badge{background:var(--greendim);color:var(--green2);font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;border:1px solid var(--greenborder)}
+
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px;background:var(--bg2);border:1px solid var(--greenborder);border-radius:30px;padding:4px;width:fit-content; box-shadow: 0 2px 10px rgba(0,0,0,0.15);}
+.tab{padding:7px 18px;border-radius:24px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text3);transition:all 0.2s;border:none;background:none}
+.tab:hover{color:var(--green2); background: rgba(255,255,255,0.05);}
+.tab.active{background:var(--green);color:#000;font-weight:700}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.card{background:var(--bg2);border:1px solid var(--greenborder);border-radius:var(--radius2);padding:14px 16px;position:relative;overflow:hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);}
+.card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.card.blue::after{background:var(--blue)}
+.card.green::after{background:var(--green)}
+.card.amber::after{background:var(--amber)}
+.card.red::after{background:var(--red)}
+.card.gold::after{background:var(--gold)}
+.card .lbl{font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px; font-weight: 600;}
+.card .val{font-size:26px;font-weight:700}
+.card.blue .val{color:var(--blue)}
+.card.green .val{color:var(--green2)}
+.card.amber .val{color:var(--amber)}
+.card.red .val{color:var(--red)}
+.card.gold .val{color:var(--gold)}
+
+.panel{background:var(--bg2);border:1px solid var(--greenborder);border-radius:var(--radius2);padding:16px 18px;margin-bottom:14px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);}
+
+select,input,textarea{border:1px solid var(--greenborder);border-radius:8px;padding:7px 11px;font-size:13px;background:var(--bg3);color:var(--text);min-width:130px;outline:none; transition: all 0.2s;}
+select:focus,input:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--greendim)}
+option{background:var(--bg3)}
+button{border:1px solid var(--greenborder);border-radius:8px;padding:7px 16px;font-size:13px;background:var(--bg3);color:var(--text2);cursor:pointer;transition:all 0.2s; font-weight: 500;}
+button:hover{background:var(--bg4);border-color:var(--green);color:var(--green2)}
+button.primary{background:var(--green);color:#000;border-color:var(--green);font-weight:700}
+button.primary:hover{background:var(--green2); box-shadow: 0 2px 10px rgba(0,200,83,0.3);}
+button.danger{background:rgba(239,83,80,0.15);color:var(--red);border-color:rgba(239,83,80,0.3);font-size:11px;padding:3px 10px}
+button.danger:hover{background:rgba(239,83,80,0.3)}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 11px;font-weight:600;font-size:11px;color:var(--text3);border-bottom:2px solid var(--greenborder);background:var(--bg3);text-transform:uppercase;letter-spacing:0.5px}
+td{padding:10px 11px;border-bottom:1px solid rgba(0,200,83,0.1);vertical-align:middle;color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg4)}
+
+.status{display:inline-block;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:0.3px}
+.s-done{background:rgba(0,200,83,0.15);color:#69f0ae;border:1px solid rgba(0,200,83,0.4)}
+.s-pending{background:rgba(255,183,77,0.15);color:#ffb74d;border:1px solid rgba(255,183,77,0.4)}
+.s-missed{background:rgba(239,83,80,0.15);color:#ef9a9a;border:1px solid rgba(239,83,80,0.4)}
+
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end; background: var(--bg3); padding: 12px; border-radius: 10px; border: 1px solid var(--greenborder);}
+.toolbar label{font-size:11px;color:var(--text3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.4px; font-weight: 600;}
+
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.chart-box{background:var(--bg2);border:1px solid var(--greenborder);border-radius:var(--radius2);padding:16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;font-size:12px;color:var(--text3)}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend-dot{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+.month-matrix{display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:10px;margin-bottom:10px}
+.mx-cell{background:var(--bg3);border:1px solid var(--greenborder);border-radius:10px;padding:14px 8px;text-align:center;cursor:pointer;transition:all 0.2s}
+.mx-cell:hover{border-color:var(--green);background:var(--bg4);transform:translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2);}
+.mx-cell .mx-num{font-size:12px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px; font-weight: 600;}
+.mx-cell .mx-cnt{font-size:26px;font-weight:700;color:var(--green2)}
+.mx-cell .mx-sub{font-size:10px;color:var(--text3);margin-top:2px}
+
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--greenborder);border-radius:var(--radius2);padding:24px;width:600px;max-width:95vw;max-height:88vh;overflow-y:auto;position:relative;box-shadow:0 10px 40px rgba(0,0,0,0.4)}
+.modal-close{position:absolute;top:16px;right:18px;cursor:pointer;font-size:22px;color:var(--text3);line-height:1; transition: 0.2s;}
+.modal-close:hover{color:var(--red); transform: scale(1.1);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-row.full{grid-template-columns:1fr}
+.form-row label{font-size:11px;color:var(--text3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px; font-weight: 600;}
+textarea{width:100%;resize:vertical;min-height:70px}
+
+.prog-bar{height:6px;border-radius:3px;background:var(--bg4);margin-top:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--green3))}
+.month-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,200,83,0.1);font-size:13px}
+.month-row:last-child{border-bottom:none}
+
+.ov-card{background:var(--bg3);border-left:4px solid var(--green);border-radius:8px;padding:12px 14px;margin-bottom:8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);}
+.ov-card.amber{border-left-color:var(--amber)}
+.ov-card.red{border-left-color:var(--red)}
+
+.divider{border:none;border-top:1px solid var(--greenborder);margin:16px 0}
+.hstat{display:flex;gap:20px;flex-wrap:wrap}
+.hstat-item{text-align:center}
+.hstat-item .hv{font-size:22px;font-weight:700;color:var(--green2)}
+.hstat-item .hl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}
+.staff-chip{display:inline-block;background:rgba(0,200,83,.08);border:1px solid var(--greenborder);border-radius:12px;padding:2px 8px;font-size:11px;color:var(--green2);margin:2px}
+
+#loginOverlay {
+  position: fixed; inset: 0; background: var(--bg); z-index: 10000;
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
+}
+.login-box {
+  background: var(--bg2); padding: 40px; border-radius: var(--radius2); width: 340px; max-width: 90%;
+  border: 1px solid var(--greenborder); text-align: center; box-shadow: 0 15px 50px rgba(0,0,0,0.6);
+}
+.login-box input {
+  margin: 20px 0; width: 100%; text-align: center; font-size: 16px; padding: 12px;
+  background: var(--bg); border: 2px solid var(--greenborder); color: var(--text);
+}
+
+@media(max-width:600px){.charts-row{grid-template-columns:1fr}.form-row{grid-template-columns:1fr}.hstat{gap:12px}}
+</style>
+</head>
+<body>
+
+<div id="loginOverlay">
+  <div class="login-box">
+    <h1 style="color:var(--green2); margin-bottom:10px;">&#9670; CLF Tracker</h1>
+    <p style="color:var(--text3); font-size:13px; line-height:1.5;">West Khasi Hills District<br>Restricted Access Dashboard</p>
+    
+    <input type="password" id="passInput" placeholder="Enter Password" onkeypress="if(event.keyCode===13) checkPassword()">
+    
+    <button class="primary" style="width:100%; padding:12px; font-size:15px;" onclick="checkPassword()">Login Securely</button>
+    
+    <p id="loginError" style="color:var(--red); font-size:13px; margin-top:15px; display:none; font-weight:600;">Incorrect Password. Please try again.</p>
+  </div>
+</div>
+
+<div id="appContent" style="display:none;">
+
+  <div class="header" id="mainHeader">
+    <div class="header-left">
+      <h1>&#9670; CLF Meeting Schedule Tracker</h1>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px">West Khasi Hills District &bull; April–December 2026 &bull; NRLM</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
+        <span class="badge">&#9679; LIVE 2026</span>
+        <span class="badge" style="color:var(--gold);border-color:rgba(255,214,0,.3);background:rgba(255,214,0,.08)">West Khasi Hills</span>
+        <span id="sheetStatus" style="font-size:11px;color:var(--text3)">Loading data...</span>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px">
+      <div class="hstat" id="headerStats">
+        <div class="hstat-item"><div class="hv" id="hTotal">0</div><div class="hl">Total</div></div>
+        <div class="hstat-item"><div class="hv" style="color:var(--green2)" id="hDone">0</div><div class="hl">Done</div></div>
+        <div class="hstat-item"><div class="hv" style="color:var(--amber)" id="hPend">0</div><div class="hl">Pending</div></div>
+        <div class="hstat-item"><div class="hv" style="color:var(--red)" id="hMiss">0</div><div class="hl">Missed</div></div>
+      </div>
+      
+      <div style="display:flex; gap:10px;">
+        <button id="pdfBtn" onclick="downloadPDF()" style="padding:9px 16px;font-size:13px;background:var(--bg3);color:var(--text);border:1px solid var(--greenborder)">&#128196; Download PDF</button>
+        <button id="syncBtn" onclick="syncNow()" style="padding:9px 16px;font-size:13px;background:var(--bg3);color:var(--text);border:1px solid var(--greenborder)">&#8635; Sync Sheet</button>
+        <button class="primary" onclick="openAdd()" style="padding:9px 20px;font-size:14px; font-weight:700;">+ Log Visit</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs" id="mainTabs">
+    <div class="tab active" onclick="switchTab('overview',this)">&#9632; Overview</div>
+    <div class="tab" onclick="switchTab('tracker',this)">&#9776; Tracker</div>
+    <div class="tab" onclick="switchTab('matrix',this)">&#9635; Monthly Matrix</div>
+    <div class="tab" onclick="switchTab('charts',this)">&#9641; Charts</div>
+    <div class="tab" onclick="switchTab('staff',this)">&#9786; Staff</div>
+  </div>
+
+  <div id="tab-overview">
+    <div class="cards" id="overviewCards"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="panel">
+        <h2>Monthly Progress &nbsp;<span style="font-size:11px;color:var(--text3);font-weight:400">April – Dec 2026</span></h2>
+        <div id="monthProgress"></div>
+      </div>
+      <div class="panel">
+        <h2>Block Summary</h2>
+        <div id="blockSummary"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-tracker" style="display:none">
+    <div class="panel">
+      <h2>Visit Log</h2>
+      <div class="toolbar">
+        <div><label>Month</label><select id="filterMonth" onchange="renderTracker()"><option value="">All</option></select></div>
+        <div><label>Block</label><select id="filterBlock" onchange="renderTracker()"><option value="">All</option></select></div>
+        <div><label>Staff</label><select id="filterStaff" onchange="renderTracker()"><option value="">All</option></select></div>
+        <div><label>Unit</label><select id="filterUnit" onchange="renderTracker()"><option value="">All</option><option>DMMU</option><option>BMMU</option></select></div>
+        <div><label>Status</label><select id="filterStatus" onchange="renderTracker()"><option value="">All</option><option>Done</option><option>Pending</option><option>Missed</option></select></div>
+        <div><label>&nbsp;</label><button onclick="resetFilters()">&#8635; Reset</button></div>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px" id="trackerCount"></div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Month</th><th>Block</th><th>CLF Code</th><th>CLF Name</th><th>Staff</th><th>Date</th><th>Unit</th><th>Findings</th><th>Status</th><th>&#8942;</th></tr></thead>
+          <tbody id="trackerBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-matrix" style="display:none">
+    <div class="panel">
+      <h2>Monthly Meeting Count Matrix</h2>
+      <div class="toolbar">
+        <div><label>Block</label><select id="matrixBlock" onchange="renderMatrix()"><option value="">All Blocks</option></select></div>
+      </div>
+      <div class="month-matrix" id="monthMatrix"></div>
+      <hr class="divider">
+      <div id="matrixDetail"></div>
+    </div>
+  </div>
+
+  <div id="tab-charts" style="display:none">
+    <div class="charts-row">
+      <div class="chart-box">
+        <h3>Visits by Block</h3>
+        <div class="legend"><span><span class="legend-dot" style="background:#00c853"></span>Visit Count</span></div>
+        <div style="position:relative;height:230px"><canvas id="barChart"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <h3>Status Distribution</h3>
+        <div class="legend" id="pieLegend">
+          <span><span class="legend-dot" style="background:#00c853"></span>Done</span>
+          <span><span class="legend-dot" style="background:#ff9800"></span>Pending</span>
+          <span><span class="legend-dot" style="background:#ef5350"></span>Missed</span>
+        </div>
+        <div style="position:relative;height:230px"><canvas id="pieChart"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-box">
+        <h3>Monthly Visit Trend</h3>
+        <div style="position:relative;height:230px"><canvas id="lineChart"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <h3>DMMU vs BMMU Monthly</h3>
+        <div class="legend">
+          <span><span class="legend-dot" style="background:#29b6f6"></span>DMMU</span>
+          <span><span class="legend-dot" style="background:#00c853"></span>BMMU</span>
+        </div>
+        <div style="position:relative;height:230px"><canvas id="unitChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-staff" style="display:none">
+    <div class="panel"><h2>Staff Performance Summary</h2><div id="staffTable"></div></div>
+  </div>
+
+</div> 
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal()">&#10005;</span>
+    <h2 style="margin-bottom:20px;color:var(--green2)">&#9670; Log CLF Visit</h2>
+    <div class="form-row">
+      <div><label>MONTH</label><select id="fMonth" style="width:100%"></select></div>
+      <div><label>BLOCK</label><select id="fBlock" style="width:100%" onchange="populateCLF()"></select></div>
+    </div>
+    <div class="form-row full">
+      <div><label>CLF</label><select id="fCLF" style="width:100%"></select></div>
+    </div>
+    <div class="form-row">
+      <div><label>PRESIDENT PHONE NO</label><input type="text" id="fPresPhone" placeholder="Enter Phone No"></div>
+      <div><label>SECRETARY PHONE NO</label><input type="text" id="fSecPhone" placeholder="Enter Phone No"></div>
+    </div>
+    <div class="form-row">
+      <div><label>STAFF NAME ATTENDING THE MEETING</label><input type="text" id="fStaff" placeholder="Name"></div>
+      <div><label>STAFF INCHARGE</label><input type="text" id="fStaffIncharge" placeholder="Incharge Name"></div>
+    </div>
+    <div class="form-row">
+      <div><label>DATE VISITED</label><input type="date" id="fDate"></div>
+      <div><label>MEETING TIME</label><input type="time" id="fTime"></div>
+    </div>
+    <div class="form-row">
+      <div><label>UNIT</label><select id="fUnit" style="width:100%"><option>DMMU</option><option>BMMU</option></select></div>
+      <div><label>STATUS</label><select id="fStatus" style="width:100%"><option>Done</option><option>Pending</option><option>Missed</option></select></div>
+    </div>
+    <div class="form-row full"><div><label>FINDINGS</label><textarea id="fFindings" placeholder="Enter findings or NII"></textarea></div></div>
+    <hr class="divider">
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="closeModal()">Cancel</button>
+      <button class="primary" onclick="saveEntry()" style="padding:8px 20px;">&#10003; Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// 🔒 SET YOUR PASSWORD HERE
+const APP_PASSWORD = "NRLM2026"; 
+// ==========================================
+
+function checkPassword() {
+  const val = document.getElementById('passInput').value;
+  if (val === APP_PASSWORD) {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('appContent').style.display = 'block';
+    sessionStorage.setItem('clf_auth', 'true');
+    initApp(); 
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('passInput').value = '';
+  }
+}
+
+function verifySession() {
+  if (sessionStorage.getItem('clf_auth') === 'true') {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('appContent').style.display = 'block';
+    initApp(); 
+  }
+}
+
+const MONTHS = ['April','May','June','July','August','September','October','November','December'];
+const BLOCKS = ['MAWSHYNRUT','NONGSTOIN','RAMBRAI','RI-MULIANG','SHALLANG'];
+
+const CLF_DATA = {
+  'MAWSHYNRUT':[
+    {code:'210000053116',name:'NONGTREI IONG BI CLUSTER LEVEL FEDERATION UMSOHPIENG'},
+    {code:'210000066913',name:'JINGKIENG BASKHEM CLF NONGJRI CIRCLE'},
+    {code:'210000062397',name:'MAWJAM CLF PORLA'},
+    {code:'210000065854',name:'NONGTREI ASOR CLF'},
+    {code:'210000053100',name:'SAINDUR IA KA LAWEI CLF MULTIPURPOSE COOPERATIVE SOCIETY LTD'},
+    {code:'210000048548',name:'RYMPEI BAIAR CLUSTER LEVEL FEDERATION CLF'},
+    {code:'210000062445',name:'KURANGSAL CLF WOMEN MULTI PURPOSE COOPERATIVE SOCIETY'}
+  ],
+  'NONGSTOIN':[
+    {code:'210000060044',name:'KYNHUN SAINDUR CLF MAWIAWET'},
+    {code:'210000063395',name:'KYRSHAN IA KA LAWEI CLF'},
+    {code:'210000063448',name:'IAINEHSKHEM CLF'},
+    {code:'210000067749',name:'WANLAM JONGCHAI CLF WAHLYNGDOH'},
+    {code:'210000065486',name:'SHAT JINSHAICLF LAITKSEH CLUSTER'},
+    {code:'210000066655',name:'KHAW KYLLA CLF MAWEIT'},
+    {code:'210000063409',name:'IAIKYRSOI CLF'},
+    {code:'210000061422',name:'KYRSIEW CLF RISIANG'},
+    {code:'210000061630',name:'MAWJAMBASKHEM CLF'},
+    {code:'210000062994',name:'DAKA BANTEI CLF'},
+    {code:'210000055996',name:'KHATWEI CLF PYNDENGREI'},
+    {code:'210000051659',name:'THWEIBIAR CLF NONGSTOIN'},
+    {code:'210000056012',name:'15 SHNONG CLUSTER LEVEL FEDERATION'}
+  ],
+  'RAMBRAI':[
+    {code:'210000066162',name:'TBEHJINGSHAI CLF MAWDOH'},
+    {code:'210000063472',name:'IATREILANG CLF MAWTHIR'},
+    {code:'210000055972',name:'WOMEN UNITED CLF RAMBRAI'},
+    {code:'210000048569',name:'KHADHYNNIEW SHNONG CLUSTER LEVEL FEDERATION'},
+    {code:'210000067132',name:'SANDAKA CLF MAWDET'}
+  ],
+  'RI-MULIANG':[
+    {code:'210000055858',name:'TENGKAME CLF'},
+    {code:'210000048553',name:'TWAR BAN SAN CLF KYRDUM'},
+    {code:'210000060695',name:'IATYLLI BAN ROI CLF'},
+    {code:'210000055901',name:'BIRONGDIK CLF'}
+  ],
+  'SHALLANG':[
+    {code:'210000062375',name:'NIASON CLF UMDANG'}
+  ]
+};
+
+const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyGdde_gYIL2PE5s6BsjZghUoiYOOrqXr897O3mlGl1WX-aRunSD9NovjyQOPeL2e0Isw/exec";
+
+let entries = [];
+
+function updateHeader() {
+  const t = entries.length, d = entries.filter(e=>e.status==='Done').length, p = entries.filter(e=>e.status==='Pending').length, m = entries.filter(e=>e.status==='Missed').length;
+  document.getElementById('hTotal').textContent=t; document.getElementById('hDone').textContent=d; document.getElementById('hPend').textContent=p; document.getElementById('hMiss').textContent=m;
+}
+
+async function loadDashboardData() {
+  try {
+    document.getElementById('sheetStatus').textContent = 'Fetching data...';
+    document.getElementById('sheetStatus').style.color = 'var(--text3)';
+
+    const response = await fetch(GOOGLE_SHEET_API_URL);
+    const rawText = await response.text(); 
+    
+    let data;
+    try {
+        data = JSON.parse(rawText);
+    } catch (parseError) {
+        throw new Error("Invalid JSON returned from Google Apps Script.");
+    }
+
+    entries = [];
+    data.forEach((row, index) => {
+      const getCol = (name) => {
+        let cleanName = name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        const key = Object.keys(row).find(k => k.replace(/[^a-zA-Z0-9]/g, '').toLowerCase().includes(cleanName));
+        return key ? row[key] : '';
+      };
+
+      let explicitMonth = getCol('Month');
+      let monthName;
+      if (explicitMonth) {
+          monthName = String(explicitMonth).trim();
+      } else {
+          let meetingDateRaw = getCol('MeetingDate') || getCol('Date');
+          let dateObj = new Date(meetingDateRaw);
+          monthName = dateObj.toLocaleString('default', { month: 'long' });
+          if(monthName === "Invalid Date") monthName = "Unknown";
+      }
+
+      let rawBlock = String(getCol('Block') || '').trim();
+      let matchedBlock = rawBlock; 
+      let normRawBlock = rawBlock.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      for (let b of BLOCKS) {
+          if (b.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === normRawBlock) {
+              matchedBlock = b; 
+              break;
+          }
+      }
+
+      let rawStatus = String(getCol('Status') || '').trim().toLowerCase();
+      let status = 'Pending'; 
+      if (rawStatus.includes('done') || rawStatus.includes('completed')) {
+          status = 'Done';
+      } else if (rawStatus.includes('missed')) {
+          status = 'Missed';
+      } else if (rawStatus.includes('pending')) {
+          status = 'Pending';
+      } else {
+          let meetingDateRaw = getCol('MeetingDate') || getCol('Date');
+          let dateObj = new Date(meetingDateRaw);
+          if (dateObj && dateObj !== "Invalid Date") {
+              let today = new Date(); today.setHours(0,0,0,0);
+              let mDate = new Date(dateObj); mDate.setHours(0,0,0,0);
+              status = (mDate < today) ? 'Done' : 'Pending';
+          }
+      }
+
+      let meetingDateRaw = getCol('MeetingDate') || getCol('Date');
+      
+      entries.push({
+        month: monthName,
+        block: matchedBlock.toUpperCase(),
+        clfCode: String(getCol('CLFCode') || ''),
+        clfName: String(getCol('CLFName') || ''),
+        staff: String(getCol('Staff') || ''),
+        date: meetingDateRaw ? String(meetingDateRaw).substring(0, 10) : '',
+        time: String(getCol('Time') || ''),
+        unit: String(getCol('Unit') || 'DMMU').toUpperCase(),
+        status: status,
+        findings: String(getCol('Findings') || 'NII'),
+        presidentPhone: String(getCol('PresidentPhone') || getCol('President Phone No') || ''),
+        secretaryPhone: String(getCol('SecretaryPhone') || getCol('Secretary Phone No') || ''),
+        staffIncharge: String(getCol('StaffIncharge') || getCol('Staff Incharge') || ''),
+        id: index
+      });
+    });
+
+    document.getElementById('sheetStatus').innerHTML = '&#10003; Sheet synced: ' + entries.length + ' records';
+    document.getElementById('sheetStatus').style.color = 'var(--green2)';
+
+    initSelects();
+    updateHeader();
+    renderOverview();
+    renderTracker();
+    renderStaff();
+    if(document.getElementById('tab-charts').style.display !== 'none') renderCharts();
+
+  } catch (e) {
+    document.getElementById('sheetStatus').textContent = 'Sheet sync failed. Check console.';
+    document.getElementById('sheetStatus').style.color = 'var(--red)';
+  }
+}
+
+async function syncNow() {
+  const btn = document.getElementById('syncBtn');
+  btn.textContent = '⏳ Syncing...'; btn.disabled = true;
+  await loadDashboardData();
+  btn.innerHTML = '&#8635; Sync Sheet'; btn.disabled = false;
+}
+
+function initSelects(){
+  const clearAndPopulate = (ids, values, keepFirstPlaceholder) => {
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      while(el.options.length > (keepFirstPlaceholder ? 1 : 0)) {
+         el.remove(el.options.length - 1);
+      }
+      values.forEach(v => {
+        const o = document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o);
+      });
+    });
+  };
+
+  clearAndPopulate(['filterMonth'], MONTHS, true);
+  clearAndPopulate(['fMonth'], MONTHS, false); 
+  clearAndPopulate(['filterBlock','matrixBlock'], BLOCKS, true);
+  clearAndPopulate(['fBlock'], BLOCKS, false); 
+  
+  const staffNames=[...new Set(entries.map(e=>e.staff).filter(Boolean))].sort();
+  clearAndPopulate(['filterStaff'], staffNames, true);
+  populateCLF();
+}
+
+function populateCLF(){
+  const b = document.getElementById('fBlock').value;
+  const sel = document.getElementById('fCLF');
+  if(!sel) return;
+  sel.innerHTML = ''; 
+  const clfs = CLF_DATA[b] || [];
+  clfs.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.name; o.dataset.code = c.code; o.textContent = c.name;
+    sel.appendChild(o);
+  });
+}
+
+function switchTab(name,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  ['overview','tracker','matrix','charts','staff'].forEach(t=>{document.getElementById('tab-'+t).style.display=t===name?'block':'none';});
+  if(name==='charts')renderCharts();if(name==='overview')renderOverview();if(name==='matrix')renderMatrix();if(name==='tracker')renderTracker();if(name==='staff')renderStaff();
+}
+
+function openAdd(){
+  document.getElementById('fStaff').value='';
+  document.getElementById('fStaffIncharge').value='';
+  document.getElementById('fPresPhone').value='';
+  document.getElementById('fSecPhone').value='';
+  document.getElementById('fDate').value='';
+  document.getElementById('fFindings').value='';
+  document.getElementById('fStatus').value='Done';
+  document.getElementById('fTime').value='';
+  document.getElementById('modalBg').classList.add('open');
+  populateCLF(); 
+}
+
+function closeModal(){document.getElementById('modalBg').classList.remove('open');}
+
+async function saveEntry(){
+  const clfSel = document.getElementById('fCLF');
+  const ds = document.getElementById('fDate').value;
+  const monSelected = document.getElementById('fMonth').value;
+  const tVal = document.getElementById('fTime').value;
+  
+  const selectedOption = clfSel.options[clfSel.selectedIndex];
+  const code = selectedOption ? selectedOption.dataset.code : '';
+  
+  // ------------------------------------------------------------
+  // EXACT PAYLOAD MAPPING: Sends BOTH exact headers and old keys 
+  // ------------------------------------------------------------
+  const payload = {
+    // 1. EXACT HEADERS (Matches your Google Sheet screenshot perfectly)
+    "District": "West Khasi Hills",
+    "Block": document.getElementById('fBlock').value,
+    "CLF Code": code,
+    "CLF Name": clfSel.value,
+    "President Phone No": document.getElementById('fPresPhone').value.trim(),
+    "Secretary Phone No": document.getElementById('fSecPhone').value.trim(),
+    "Staff Incharge": document.getElementById('fStaffIncharge').value.trim(),
+    "Meeting Date": ds,
+    "Meeting Time": tVal,
+    "Name of Staff attending": document.getElementById('fStaff').value.trim(),
+    "Unit": document.getElementById('fUnit').value,
+    "Findings": document.getElementById('fFindings').value.trim() || 'NII',
+    "Status": document.getElementById('fStatus').value,
+    "Month": monSelected,
+
+    // 2. FALLBACK/LOCAL KEYS (So the dashboard doesn't break locally)
+    month: monSelected,
+    block: document.getElementById('fBlock').value,
+    clfCode: code, 
+    clfName: clfSel.value,
+    staff: document.getElementById('fStaff').value.trim(),
+    date: ds,
+    time: tVal,
+    unit: document.getElementById('fUnit').value,
+    status: document.getElementById('fStatus').value,
+    findings: document.getElementById('fFindings').value.trim() || 'NII',
+    presidentPhone: document.getElementById('fPresPhone').value.trim(),
+    secretaryPhone: document.getElementById('fSecPhone').value.trim(),
+    staffIncharge: document.getElementById('fStaffIncharge').value.trim()
+  };
+  
+  payload.id = Date.now();
+  entries.push(payload);
+  closeModal();
+  updateHeader(); renderOverview(); renderTracker(); renderStaff();
+  
+  try {
+    console.log("Sending payload to Google Sheets:", payload);
+    await fetch(GOOGLE_SHEET_API_URL, {
+      method: 'POST',
+      mode: 'no-cors', 
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload) 
+    });
+    setTimeout(loadDashboardData, 1500); 
+  } catch (error) {
+    console.error("Error saving data:", error);
+    alert("Warning: Could not save the entry to Google Sheets.");
+  }
+}
+
+function deleteEntry(id){
+  alert("For accurate tracking, please delete the row directly inside your Google Sheet, then click 'Sync Sheet'!");
+}
+
+function resetFilters(){['filterMonth','filterBlock','filterStaff','filterUnit','filterStatus'].forEach(id=>{document.getElementById(id).value='';});renderTracker();}
+
+function getFiltered(){
+  let d=[...entries];
+  const m=document.getElementById('filterMonth')?.value,b=document.getElementById('filterBlock')?.value,
+        sf=document.getElementById('filterStaff')?.value,u=document.getElementById('filterUnit')?.value,s=document.getElementById('filterStatus')?.value;
+  if(m)d=d.filter(e=>e.month===m);if(b)d=d.filter(e=>e.block===b);if(sf)d=d.filter(e=>e.staff===sf);if(u)d=d.filter(e=>e.unit===u);if(s)d=d.filter(e=>e.status===s);
+  return d;
+}
+
+function statusBadge(s){const m={Done:'s-done',Pending:'s-pending',Missed:'s-missed'};return`<span class="status ${m[s.trim()]||'s-pending'}">${s.trim()}</span>`;}
+
+function renderTracker(){
+  const f=getFiltered();
+  document.getElementById('trackerCount').textContent='Showing '+f.length+' of '+entries.length+' records';
+  const tbody=document.getElementById('trackerBody');
+  if(!f.length){tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:28px">No entries found.</td></tr>`;return;}
+  
+  // FIX: Output exactly 10 <td> elements corresponding to the 10 <th> headers in the table.
+  tbody.innerHTML=f.map(e=>`<tr>
+    <td style="color:var(--green2);font-weight:500">${e.month}</td>
+    <td style="font-weight:500">${e.block}</td>
+    <td style="font-size:11px;color:var(--text3)">${e.clfCode}</td>
+    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.clfName}">${e.clfName}</td>
+    <td><span class="staff-chip">${e.staff||'—'}</span></td>
+    <td style="color:var(--text2)">${e.date||'—'}</td>
+    <td><span style="background:rgba(41,182,246,.12);color:#29b6f6;border:1px solid rgba(41,182,246,.25);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${e.unit}</span></td>
+    <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text3);font-size:12px" title="${e.findings}">${e.findings}</td>
+    <td>${statusBadge(e.status)}</td>
+    <td><button class="danger" onclick="deleteEntry(${e.id})">Del</button></td>
+  </tr>`).join('');
+}
+
+function renderMatrix(){
+  const blk=document.getElementById('matrixBlock').value;
+  document.getElementById('monthMatrix').innerHTML=MONTHS.map(m=>{
+    let d=entries.filter(e=>e.month===m);
+    if(blk)d=d.filter(e=>e.block===blk);
+    const done=d.filter(e=>e.status==='Done').length;
+    const pend=d.filter(e=>e.status==='Pending').length;
+    const miss=d.filter(e=>e.status==='Missed').length;
+    return`<div class="mx-cell" onclick="showMonthDetail('${m}','${blk}')">
+      <div class="mx-num">${m}</div><div class="mx-cnt">${d.length}</div>
+      <div class="mx-sub" style="display:flex;justify-content:center;gap:6px;margin-top:6px">
+        <span style="color:#69f0ae;font-size:11px">&#10003;${done}</span>
+        <span style="color:#ffb74d;font-size:11px">&#9679;${pend}</span>
+        <span style="color:#ef9a9a;font-size:11px">&#10007;${miss}</span>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('matrixDetail').innerHTML='';
+}
+
+function showMonthDetail(m, blk){
+  let d=entries.filter(e=>e.month===m);
+  if(blk)d=d.filter(e=>e.block===blk);
+  const el=document.getElementById('matrixDetail');
+  if(!d.length){
+    el.innerHTML=`<div style="color:var(--text3);padding:8px">No entries for ${m}.</div>`; return;
+  }
+  
+  // FIX: Output exactly 8 <td> elements corresponding to the 8 <th> headers in this sub-table.
+  el.innerHTML=`<h3 style="margin-bottom:10px;color:var(--green2)">${m} Details (${d.length} visits)</h3>
+  <div style="overflow-x:auto"><table>
+    <thead><tr><th>Block</th><th>CLF Name</th><th>Staff</th><th>Date</th><th>Time</th><th>Unit</th><th>Status</th><th>Findings</th></tr></thead>
+    <tbody>${d.map(e=>`<tr>
+      <td>${e.block}</td>
+      <td>${e.clfName}</td>
+      <td><span class="staff-chip">${e.staff||'—'}</span></td>
+      <td>${e.date}</td>
+      <td style="color:var(--text3)">${e.time||'—'}</td>
+      <td>${e.unit}</td>
+      <td>${statusBadge(e.status)}</td>
+      <td style="color:var(--text3);font-size:12px">${e.findings}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function renderOverview(){
+  const total=entries.length,done=entries.filter(e=>e.status==='Done').length,pend=entries.filter(e=>e.status==='Pending').length,miss=entries.filter(e=>e.status==='Missed').length;
+  const pct=total?Math.round(done/total*100):0;
+  const totalCLF = Object.values(CLF_DATA).reduce((sum, arr) => sum + arr.length, 0);
+
+  document.getElementById('overviewCards').innerHTML=`
+    <div class="card blue"><div class="lbl">Total Records</div><div class="val">${total}</div></div>
+    <div class="card green"><div class="lbl">Completed</div><div class="val">${done}</div></div>
+    <div class="card amber"><div class="lbl">Pending</div><div class="val">${pend}</div></div>
+    <div class="card red"><div class="lbl">Missed</div><div class="val">${miss}</div></div>
+    <div class="card blue"><div class="lbl">Completion %</div><div class="val">${pct}%</div></div>
+    <div class="card gold"><div class="lbl">Total Target CLFs</div><div class="val">${totalCLF}</div></div>
+  `;
+  document.getElementById('monthProgress').innerHTML=MONTHS.map(m=>{
+    const mt=entries.filter(e=>e.month===m).length,md=entries.filter(e=>e.month===m&&e.status==='Done').length;
+    const pp=mt?Math.round(md/mt*100):0;
+    const col=pp>75?'var(--green2)':pp>40?'var(--amber)':'var(--red)';
+    return`<div class="month-row">
+      <span style="min-width:88px;color:var(--text2);font-weight:500">${m}</span>
+      <span style="color:var(--text3);font-size:11px;min-width:52px">${md}/${mt}</span>
+      <div style="flex:1"><div class="prog-bar"><div class="prog-fill" style="width:${pp}%"></div></div></div>
+      <span style="min-width:36px;text-align:right;font-size:12px;font-weight:600;color:${col}">${pp}%</span>
+    </div>`;
+  }).join('');
+  document.getElementById('blockSummary').innerHTML=BLOCKS.map(b=>{
+    const bE=entries.filter(e=>e.block===b),bd=bE.filter(e=>e.status==='Done').length,bp=bE.filter(e=>e.status==='Pending').length,bm=bE.filter(e=>e.status==='Missed').length,pp=bE.length?Math.round(bd/bE.length*100):0;
+    return`<div class="ov-card ${pp<40&&bE.length?'red':bp>bd?'amber':''}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-weight:600">${b}</span><span style="font-size:11px;color:var(--text3)">${bE.length} visits</span></div>
+      <div style="display:flex;gap:10px;font-size:11px;margin-bottom:5px"><span style="color:#69f0ae">&#10003; ${bd} Done</span><span style="color:#ffb74d">&#9679; ${bp} Pending</span><span style="color:#ef9a9a">&#10007; ${bm} Missed</span></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pp}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderStaff(){
+  const staffMap={};
+  entries.forEach(e=>{
+    const s=e.staff||'Unknown';
+    if(!staffMap[s])staffMap[s]={name:s,total:0,done:0,pending:0,missed:0,blocks:new Set(),units:new Set()};
+    staffMap[s].total++;
+    if(e.status==='Done')staffMap[s].done++;
+    else if(e.status==='Pending')staffMap[s].pending++;
+    else staffMap[s].missed++;
+    staffMap[s].blocks.add(e.block);staffMap[s].units.add(e.unit);
+  });
+  const rows=Object.values(staffMap).sort((a,b)=>b.total-a.total);
+  document.getElementById('staffTable').innerHTML=`<div style="overflow-x:auto"><table>
+    <thead><tr><th>Staff Name</th><th>Total Visits</th><th>Done</th><th>Pending</th><th>Missed</th><th>Rate</th><th>Blocks</th><th>Unit</th></tr></thead>
+    <tbody>${rows.map(s=>{
+      const pp=Math.round(s.done/s.total*100) || 0;
+      const col=pp>75?'var(--green2)':pp>40?'var(--amber)':'var(--red)';
+      return`<tr>
+        <td><span class="staff-chip">${s.name}</span></td>
+        <td style="font-weight:600;color:var(--blue)">${s.total}</td>
+        <td style="color:#69f0ae">${s.done}</td>
+        <td style="color:#ffb74d">${s.pending}</td>
+        <td style="color:#ef9a9a">${s.missed}</td>
+        <td><div style="display:flex;align-items:center;gap:6px"><div class="prog-bar" style="width:80px"><div class="prog-fill" style="width:${pp}%"></div></div><span style="font-size:12px;font-weight:600;color:${col}">${pp}%</span></div></td>
+        <td style="font-size:11px;color:var(--text3)">${[...s.blocks].join(', ')}</td>
+        <td style="font-size:11px">${[...s.units].map(u=>`<span style="background:rgba(41,182,246,.12);color:#29b6f6;border:1px solid rgba(41,182,246,.25);padding:1px 7px;border-radius:10px;font-size:10px">${u}</span>`).join(' ')}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+let barChart,pieChart,lineChart,unitChart;
+function renderCharts(){
+  const blockCounts=BLOCKS.map(b=>entries.filter(e=>e.block===b).length);
+  const done=entries.filter(e=>e.status==='Done').length,pend=entries.filter(e=>e.status==='Pending').length,miss=entries.filter(e=>e.status==='Missed').length;
+  const monthCounts=MONTHS.map(m=>entries.filter(e=>e.month===m).length);
+  const dmmC=MONTHS.map(m=>entries.filter(e=>e.month===m&&e.unit==='DMMU').length);
+  const bmmC=MONTHS.map(m=>entries.filter(e=>e.month===m&&e.unit==='BMMU').length);
+  
+  if(barChart)barChart.destroy();if(pieChart)pieChart.destroy();if(lineChart)lineChart.destroy();if(unitChart)unitChart.destroy();
+  const gc=(id,c1,c2)=>{const g=document.getElementById(id).getContext('2d').createLinearGradient(0,0,0,220);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;};
+  const gridCfg={color:'rgba(0,200,83,.07)'};const tickCfg={color:'#558b5a'};
+  
+  barChart=new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:BLOCKS,datasets:[{data:blockCounts,backgroundColor:gc('barChart','#00e676','#00c85344'),borderColor:'#00c853',borderWidth:1,borderRadius:6}]},options:{animation:false,responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{...tickCfg,font:{size:10}},grid:gridCfg},y:{beginAtZero:true,ticks:{...tickCfg,stepSize:1},grid:gridCfg}}}});
+  pieChart=new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels:['Done','Pending','Missed'],datasets:[{data:[done||0.1,pend,miss],backgroundColor:['#00c853','#ff9800','#ef5350'],borderColor:'#0a0f0a',borderWidth:3,hoverOffset:8}]},options:{animation:false,responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}});
+  
+  const lCtx=document.getElementById('lineChart').getContext('2d');
+  const lg=lCtx.createLinearGradient(0,0,0,220);lg.addColorStop(0,'rgba(0,200,83,.3)');lg.addColorStop(1,'rgba(0,200,83,0)');
+  lineChart=new Chart(lCtx,{type:'line',data:{labels:MONTHS,datasets:[{data:monthCounts,borderColor:'#00c853',backgroundColor:lg,fill:true,tension:.4,pointBackgroundColor:'#00e676',pointRadius:5,pointHoverRadius:7}]},options:{animation:false,responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{...tickCfg,font:{size:10}},grid:gridCfg},y:{beginAtZero:true,ticks:{...tickCfg,stepSize:2},grid:gridCfg}}}});
+  
+  unitChart=new Chart(document.getElementById('unitChart'),{type:'bar',data:{labels:MONTHS,datasets:[{label:'DMMU',data:dmmC,backgroundColor:'#29b6f6',borderRadius:4},{label:'BMMU',data:bmmC,backgroundColor:'#00c853',borderRadius:4}]},options:{animation:false,responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{...tickCfg,font:{size:9}},grid:gridCfg},y:{beginAtZero:true,ticks:{...tickCfg,stepSize:1},grid:gridCfg}}}});
+}
+
+async function downloadPDF() {
+  const btn = document.getElementById('pdfBtn');
+  if (btn) { btn.innerHTML = '⏳ Generating PDF...'; btn.disabled = true; }
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('l', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const activeTabEl = document.querySelector('.tab.active');
+    const activeTabName = activeTabEl ? activeTabEl.textContent.trim().replace(/[^a-zA-Z]/g, '').toLowerCase() : 'overview';
+
+    const sectionsToExport = ['overview', 'matrix', 'charts', 'staff'];
+    let firstPage = true;
+
+    for (let sec of sectionsToExport) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      ['overview','tracker','matrix','charts','staff'].forEach(t => { document.getElementById('tab-'+t).style.display = (t === sec) ? 'block' : 'none'; });
+      if (sec === 'charts') renderCharts();
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const el = document.getElementById('tab-' + sec);
+      if (!el) continue;
+
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#1a221a' });
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const imgProps = pdf.getImageProperties(imgData);
+      const margin = 10;
+      let imgWidth = pdfWidth - (margin * 2);
+      let imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+
+      if (!firstPage) pdf.addPage();
+      pdf.setFillColor(26, 34, 26);
+      pdf.rect(0, 0, pdfWidth, pdfHeight, 'F');
+      
+      let yOffset = margin;
+      if (firstPage) {
+         const headerEl = document.getElementById('mainHeader');
+         const headerCanvas = await html2canvas(headerEl, { scale: 2, useCORS: true, backgroundColor: '#1a221a' });
+         const hImgData = headerCanvas.toDataURL('image/jpeg', 1.0);
+         const hImgProps = pdf.getImageProperties(hImgData);
+         const hImgWidth = pdfWidth - (margin * 2);
+         const hImgHeight = (hImgProps.height * hImgWidth) / hImgProps.width;
+         pdf.addImage(hImgData, 'JPEG', margin, margin, hImgWidth, hImgHeight);
+         yOffset = margin + hImgHeight + 10;
+      } else {
+         pdf.setTextColor(0, 230, 118); 
+         pdf.setFontSize(16);
+         pdf.text(sec.toUpperCase() + " REPORT", margin, margin + 6);
+         yOffset = margin + 15;
+      }
+
+      if (imgHeight > (pdfHeight - yOffset - margin)) {
+         const ratio = (pdfHeight - yOffset - margin) / imgHeight;
+         imgHeight = imgHeight * ratio;
+         imgWidth = imgWidth * ratio;
+      }
+      const xOffset = margin + ((pdfWidth - (margin * 2) - imgWidth) / 2);
+      pdf.addImage(imgData, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
+      firstPage = false;
+    }
+
+    pdf.save('CLF_Dashboard_Report.pdf');
+    if (activeTabEl) {
+      let tabMap = { 'overview':'overview', 'tracker':'tracker', 'monthlymatrix':'matrix', 'charts':'charts', 'staff':'staff' };
+      switchTab(tabMap[activeTabName] || 'overview', activeTabEl);
+    }
+  } catch (error) {
+    console.error("PDF Error:", error); alert("Error generating PDF.");
+  }
+  if (btn) { btn.innerHTML = '&#128196; Download PDF'; btn.disabled = false; }
+}
+
+function initApp() {
+  loadDashboardData();
+  setInterval(syncNow, 300000); 
+}
+
+verifySession();
+</script>
+</body>
+</html>
