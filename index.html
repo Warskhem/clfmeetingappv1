@@ -74,6 +74,8 @@ button{border:1px solid var(--greenborder);border-radius:8px;padding:7px 16px;fo
 button:hover{background:var(--bg4);border-color:var(--green);color:var(--green2)}
 button.primary{background:var(--green);color:#000;border-color:var(--green);font-weight:700}
 button.primary:hover{background:var(--green2); box-shadow: 0 2px 10px rgba(0,200,83,0.3);}
+button.assign{background:rgba(41,182,246,0.15);color:var(--blue);border-color:var(--blue);font-weight:700;}
+button.assign:hover{background:var(--blue);color:#000;box-shadow: 0 2px 10px rgba(41,182,246,0.3);}
 button.danger{background:rgba(239,83,80,0.15);color:var(--red);border-color:rgba(239,83,80,0.3);font-size:11px;padding:3px 10px}
 button.danger:hover{background:rgba(239,83,80,0.3)}
 
@@ -87,6 +89,7 @@ tr:hover td{background:var(--bg4)}
 .s-done{background:rgba(0,200,83,0.15);color:#69f0ae;border:1px solid rgba(0,200,83,0.4)}
 .s-pending{background:rgba(255,183,77,0.15);color:#ffb74d;border:1px solid rgba(255,183,77,0.4)}
 .s-missed{background:rgba(239,83,80,0.15);color:#ef9a9a;border:1px solid rgba(239,83,80,0.4)}
+.s-planned{background:rgba(41,182,246,0.15);color:#29b6f6;border:1px solid rgba(41,182,246,0.4)}
 
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end; background: var(--bg3); padding: 12px; border-radius: 10px; border: 1px solid var(--greenborder);}
 .toolbar label{font-size:11px;color:var(--text3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.4px; font-weight: 600;}
@@ -124,11 +127,12 @@ textarea{width:100%;resize:vertical;min-height:70px}
 .ov-card.red{border-left-color:var(--red)}
 
 .divider{border:none;border-top:1px solid var(--greenborder);margin:16px 0}
-.hstat{display:flex;gap:20px;flex-wrap:wrap}
+.hstat{display:flex;gap:15px;flex-wrap:wrap}
 .hstat-item{text-align:center}
 .hstat-item .hv{font-size:22px;font-weight:700;color:var(--green2)}
 .hstat-item .hl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}
 .staff-chip{display:inline-block;background:rgba(0,200,83,.08);border:1px solid var(--greenborder);border-radius:12px;padding:2px 8px;font-size:11px;color:var(--green2);margin:2px}
+.assign-chip{display:inline-block;background:rgba(41,182,246,0.1);border:1px solid rgba(41,182,246,0.4);border-radius:12px;padding:2px 8px;font-size:11px;color:var(--blue);margin:2px;font-weight:600}
 
 #loginOverlay {
   position: fixed; inset: 0; background: var(--bg); z-index: 10000;
@@ -143,7 +147,11 @@ textarea{width:100%;resize:vertical;min-height:70px}
   background: var(--bg); border: 2px solid var(--greenborder); color: var(--text);
 }
 
-@media(max-width:600px){.charts-row{grid-template-columns:1fr}.form-row{grid-template-columns:1fr}.hstat{gap:12px}}
+@media(max-width:800px){
+  .charts-row{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr}
+  .hstat{gap:12px}
+}
 </style>
 </head>
 <body>
@@ -178,12 +186,14 @@ textarea{width:100%;resize:vertical;min-height:70px}
         <div class="hstat-item"><div class="hv" id="hTotal">0</div><div class="hl">Total</div></div>
         <div class="hstat-item"><div class="hv" style="color:var(--green2)" id="hDone">0</div><div class="hl">Done</div></div>
         <div class="hstat-item"><div class="hv" style="color:var(--amber)" id="hPend">0</div><div class="hl">Pending</div></div>
+        <div class="hstat-item"><div class="hv" style="color:var(--blue)" id="hPlan">0</div><div class="hl">Planned</div></div>
         <div class="hstat-item"><div class="hv" style="color:var(--red)" id="hMiss">0</div><div class="hl">Missed</div></div>
       </div>
       
       <div style="display:flex; gap:10px;">
-        <button id="pdfBtn" onclick="downloadPDF()" style="padding:9px 16px;font-size:13px;background:var(--bg3);color:var(--text);border:1px solid var(--greenborder)">&#128196; Download PDF</button>
-        <button id="syncBtn" onclick="syncNow()" style="padding:9px 16px;font-size:13px;background:var(--bg3);color:var(--text);border:1px solid var(--greenborder)">&#8635; Sync Sheet</button>
+        <button id="pdfBtn" onclick="downloadPDF()" style="padding:9px 16px;font-size:13px;background:var(--bg3);color:var(--text);border:1px solid var(--greenborder)">&#128196; PDF</button>
+        <button id="syncBtn" onclick="syncNow()" style="padding:9px 16px;font-size:13px;background:var(--bg3);color:var(--text);border:1px solid var(--greenborder)">&#8635; Sync</button>
+        <button class="assign" onclick="openAssignModal()" style="padding:9px 20px;font-size:14px;">📋 Assign Staff</button>
         <button class="primary" onclick="openAdd()" style="padding:9px 20px;font-size:14px; font-weight:700;">+ Log Visit</button>
       </div>
     </div>
@@ -191,6 +201,7 @@ textarea{width:100%;resize:vertical;min-height:70px}
 
   <div class="tabs" id="mainTabs">
     <div class="tab active" onclick="switchTab('overview',this)">&#9632; Overview</div>
+    <div class="tab" onclick="switchTab('plans',this)">📅 Meeting Plans</div>
     <div class="tab" onclick="switchTab('tracker',this)">&#9776; Tracker</div>
     <div class="tab" onclick="switchTab('matrix',this)">&#9635; Monthly Matrix</div>
     <div class="tab" onclick="switchTab('charts',this)">&#9641; Charts</div>
@@ -211,6 +222,36 @@ textarea{width:100%;resize:vertical;min-height:70px}
     </div>
   </div>
 
+  <div id="tab-plans" style="display:none">
+    <div class="panel">
+      <h2>Staff Meeting Assignments & Plans</h2>
+      <div class="toolbar">
+        <div><label>Filter by Staff Name</label><select id="planFilterStaff" onchange="renderPlans()"><option value="">All Staff</option></select></div>
+        <div><label>&nbsp;</label><button onclick="document.getElementById('planFilterStaff').value=''; renderPlans()">&#8635; Reset</button></div>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px" id="planCount"></div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Block</th>
+              <th>CLF Name</th>
+              <th>Assigned Staff</th>
+              <th>Plan Date</th>
+              <th>Time</th>
+              <th>Unit</th>
+              <th>DMM Instructions</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="plansBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <div id="tab-tracker" style="display:none">
     <div class="panel">
       <h2>Visit Log</h2>
@@ -219,13 +260,30 @@ textarea{width:100%;resize:vertical;min-height:70px}
         <div><label>Block</label><select id="filterBlock" onchange="renderTracker()"><option value="">All</option></select></div>
         <div><label>Staff</label><select id="filterStaff" onchange="renderTracker()"><option value="">All</option></select></div>
         <div><label>Unit</label><select id="filterUnit" onchange="renderTracker()"><option value="">All</option><option>DMMU</option><option>BMMU</option></select></div>
-        <div><label>Status</label><select id="filterStatus" onchange="renderTracker()"><option value="">All</option><option>Done</option><option>Pending</option><option>Missed</option></select></div>
+        <div><label>Status</label><select id="filterStatus" onchange="renderTracker()"><option value="">All</option><option>Done</option><option>Pending</option><option>Missed</option><option>Planned</option></select></div>
         <div><label>&nbsp;</label><button onclick="resetFilters()">&#8635; Reset</button></div>
       </div>
       <div style="font-size:12px;color:var(--text3);margin-bottom:8px" id="trackerCount"></div>
       <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>Month</th><th>Block</th><th>CLF Code</th><th>CLF Name</th><th>Staff</th><th>Date</th><th>Unit</th><th>Findings</th><th>Status</th><th>&#8942;</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Block</th>
+              <th>CLF Code</th>
+              <th>CLF Name</th>
+              <th>President Ph</th>
+              <th>Secretary Ph</th>
+              <th>Staff Attending</th>
+              <th>Staff Incharge</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Unit</th>
+              <th>Findings</th>
+              <th>Status</th>
+              <th>&#8942;</th>
+            </tr>
+          </thead>
           <tbody id="trackerBody"></tbody>
         </table>
       </div>
@@ -256,6 +314,7 @@ textarea{width:100%;resize:vertical;min-height:70px}
         <div class="legend" id="pieLegend">
           <span><span class="legend-dot" style="background:#00c853"></span>Done</span>
           <span><span class="legend-dot" style="background:#ff9800"></span>Pending</span>
+          <span><span class="legend-dot" style="background:#29b6f6"></span>Planned</span>
           <span><span class="legend-dot" style="background:#ef5350"></span>Missed</span>
         </div>
         <div style="position:relative;height:230px"><canvas id="pieChart"></canvas></div>
@@ -287,6 +346,7 @@ textarea{width:100%;resize:vertical;min-height:70px}
   <div class="modal">
     <span class="modal-close" onclick="closeModal()">&#10005;</span>
     <h2 style="margin-bottom:20px;color:var(--green2)">&#9670; Log CLF Visit</h2>
+    
     <div class="form-row">
       <div><label>MONTH</label><select id="fMonth" style="width:100%"></select></div>
       <div><label>BLOCK</label><select id="fBlock" style="width:100%" onchange="populateCLF()"></select></div>
@@ -299,7 +359,7 @@ textarea{width:100%;resize:vertical;min-height:70px}
       <div><label>SECRETARY PHONE NO</label><input type="text" id="fSecPhone" placeholder="Enter Phone No"></div>
     </div>
     <div class="form-row">
-      <div><label>STAFF NAME ATTENDING THE MEETING</label><input type="text" id="fStaff" placeholder="Name"></div>
+      <div><label>STAFF NAME ATTENDING</label><input type="text" id="fStaff" placeholder="Name"></div>
       <div><label>STAFF INCHARGE</label><input type="text" id="fStaffIncharge" placeholder="Incharge Name"></div>
     </div>
     <div class="form-row">
@@ -311,13 +371,50 @@ textarea{width:100%;resize:vertical;min-height:70px}
       <div><label>STATUS</label><select id="fStatus" style="width:100%"><option>Done</option><option>Pending</option><option>Missed</option></select></div>
     </div>
     <div class="form-row full"><div><label>FINDINGS</label><textarea id="fFindings" placeholder="Enter findings or NII"></textarea></div></div>
+    
     <hr class="divider">
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button onclick="closeModal()">Cancel</button>
-      <button class="primary" onclick="saveEntry()" style="padding:8px 20px;">&#10003; Save Entry</button>
+      <button class="primary" onclick="saveEntry('Log')" style="padding:8px 20px;">&#10003; Save Entry</button>
     </div>
   </div>
 </div>
+
+<div class="modal-bg" id="assignModalBg">
+  <div class="modal">
+    <span class="modal-close" onclick="closeAssignModal()">&#10005;</span>
+    <h2 style="margin-bottom:20px;color:var(--blue)">📋 Assign Staff to Meeting</h2>
+    
+    <div class="form-row">
+      <div><label>MONTH</label><select id="aMonth" style="width:100%"></select></div>
+      <div><label>BLOCK</label><select id="aBlock" style="width:100%" onchange="populateAssignCLF()"></select></div>
+    </div>
+    <div class="form-row full">
+      <div><label>CLF</label><select id="aCLF" style="width:100%"></select></div>
+    </div>
+    <div class="form-row">
+      <div><label>ASSIGNED STAFF NAME</label><input type="text" id="aStaff" placeholder="Staff Name"></div>
+      <div><label>STAFF INCHARGE</label><input type="text" id="aStaffIncharge" placeholder="Incharge Name"></div>
+    </div>
+    <div class="form-row">
+      <div><label>PLANNED DATE</label><input type="date" id="aDate"></div>
+      <div><label>PLANNED TIME</label><input type="time" id="aTime"></div>
+    </div>
+    <div class="form-row">
+      <div><label>UNIT</label><select id="aUnit" style="width:100%"><option>DMMU</option><option>BMMU</option></select></div>
+    </div>
+    <div class="form-row full">
+      <div><label>DMM/BPM RECOMMENDATIONS & INSTRUCTIONS</label><textarea id="aInstructions" placeholder="Enter tasks or instructions for the staff..."></textarea></div>
+    </div>
+    
+    <hr class="divider">
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="closeAssignModal()">Cancel</button>
+      <button class="assign" onclick="saveEntry('Assign')" style="padding:8px 20px;">&#10003; Save Assignment</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
 // ==========================================
@@ -397,8 +494,17 @@ const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyGdde_gYI
 let entries = [];
 
 function updateHeader() {
-  const t = entries.length, d = entries.filter(e=>e.status==='Done').length, p = entries.filter(e=>e.status==='Pending').length, m = entries.filter(e=>e.status==='Missed').length;
-  document.getElementById('hTotal').textContent=t; document.getElementById('hDone').textContent=d; document.getElementById('hPend').textContent=p; document.getElementById('hMiss').textContent=m;
+  const t = entries.length;
+  const d = entries.filter(e=>e.status==='Done').length;
+  const p = entries.filter(e=>e.status==='Pending').length;
+  const m = entries.filter(e=>e.status==='Missed').length;
+  const plan = entries.filter(e=>e.status==='Planned').length;
+  
+  document.getElementById('hTotal').textContent=t; 
+  document.getElementById('hDone').textContent=d; 
+  document.getElementById('hPend').textContent=p; 
+  document.getElementById('hPlan').textContent=plan; 
+  document.getElementById('hMiss').textContent=m;
 }
 
 async function loadDashboardData() {
@@ -410,11 +516,8 @@ async function loadDashboardData() {
     const rawText = await response.text(); 
     
     let data;
-    try {
-        data = JSON.parse(rawText);
-    } catch (parseError) {
-        throw new Error("Invalid JSON returned from Google Apps Script.");
-    }
+    try { data = JSON.parse(rawText); } 
+    catch (parseError) { throw new Error("Invalid JSON returned from Google Apps Script."); }
 
     entries = [];
     data.forEach((row, index) => {
@@ -440,14 +543,15 @@ async function loadDashboardData() {
       let normRawBlock = rawBlock.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
       for (let b of BLOCKS) {
           if (b.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === normRawBlock) {
-              matchedBlock = b; 
-              break;
+              matchedBlock = b; break;
           }
       }
 
       let rawStatus = String(getCol('Status') || '').trim().toLowerCase();
       let status = 'Pending'; 
-      if (rawStatus.includes('done') || rawStatus.includes('completed')) {
+      if (rawStatus.includes('planned') || rawStatus.includes('assigned')) {
+          status = 'Planned';
+      } else if (rawStatus.includes('done') || rawStatus.includes('completed')) {
           status = 'Done';
       } else if (rawStatus.includes('missed')) {
           status = 'Missed';
@@ -470,9 +574,9 @@ async function loadDashboardData() {
         block: matchedBlock.toUpperCase(),
         clfCode: String(getCol('CLFCode') || ''),
         clfName: String(getCol('CLFName') || ''),
-        staff: String(getCol('Staff') || ''),
+        staff: String(getCol('NameofStaffattending') || getCol('Staff') || ''),
         date: meetingDateRaw ? String(meetingDateRaw).substring(0, 10) : '',
-        time: String(getCol('Time') || ''),
+        time: String(getCol('MeetingTime') || getCol('Time') || ''),
         unit: String(getCol('Unit') || 'DMMU').toUpperCase(),
         status: status,
         findings: String(getCol('Findings') || 'NII'),
@@ -489,6 +593,7 @@ async function loadDashboardData() {
     initSelects();
     updateHeader();
     renderOverview();
+    renderPlans();
     renderTracker();
     renderStaff();
     if(document.getElementById('tab-charts').style.display !== 'none') renderCharts();
@@ -503,7 +608,7 @@ async function syncNow() {
   const btn = document.getElementById('syncBtn');
   btn.textContent = '⏳ Syncing...'; btn.disabled = true;
   await loadDashboardData();
-  btn.innerHTML = '&#8635; Sync Sheet'; btn.disabled = false;
+  btn.innerHTML = '&#8635; Sync'; btn.disabled = false;
 }
 
 function initSelects(){
@@ -511,9 +616,7 @@ function initSelects(){
     ids.forEach(id => {
       const el = document.getElementById(id);
       if(!el) return;
-      while(el.options.length > (keepFirstPlaceholder ? 1 : 0)) {
-         el.remove(el.options.length - 1);
-      }
+      while(el.options.length > (keepFirstPlaceholder ? 1 : 0)) { el.remove(el.options.length - 1); }
       values.forEach(v => {
         const o = document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o);
       });
@@ -521,13 +624,15 @@ function initSelects(){
   };
 
   clearAndPopulate(['filterMonth'], MONTHS, true);
-  clearAndPopulate(['fMonth'], MONTHS, false); 
+  clearAndPopulate(['fMonth', 'aMonth'], MONTHS, false); 
   clearAndPopulate(['filterBlock','matrixBlock'], BLOCKS, true);
-  clearAndPopulate(['fBlock'], BLOCKS, false); 
+  clearAndPopulate(['fBlock', 'aBlock'], BLOCKS, false); 
   
   const staffNames=[...new Set(entries.map(e=>e.staff).filter(Boolean))].sort();
-  clearAndPopulate(['filterStaff'], staffNames, true);
+  clearAndPopulate(['filterStaff', 'planFilterStaff'], staffNames, true);
+  
   populateCLF();
+  populateAssignCLF();
 }
 
 function populateCLF(){
@@ -537,86 +642,111 @@ function populateCLF(){
   sel.innerHTML = ''; 
   const clfs = CLF_DATA[b] || [];
   clfs.forEach(c => {
-    const o = document.createElement('option');
-    o.value = c.name; o.dataset.code = c.code; o.textContent = c.name;
-    sel.appendChild(o);
+    const o = document.createElement('option'); o.value = c.name; o.dataset.code = c.code; o.textContent = c.name; sel.appendChild(o);
+  });
+}
+
+function populateAssignCLF(){
+  const b = document.getElementById('aBlock').value;
+  const sel = document.getElementById('aCLF');
+  if(!sel) return;
+  sel.innerHTML = ''; 
+  const clfs = CLF_DATA[b] || [];
+  clfs.forEach(c => {
+    const o = document.createElement('option'); o.value = c.name; o.dataset.code = c.code; o.textContent = c.name; sel.appendChild(o);
   });
 }
 
 function switchTab(name,el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   if (el) el.classList.add('active');
-  ['overview','tracker','matrix','charts','staff'].forEach(t=>{document.getElementById('tab-'+t).style.display=t===name?'block':'none';});
-  if(name==='charts')renderCharts();if(name==='overview')renderOverview();if(name==='matrix')renderMatrix();if(name==='tracker')renderTracker();if(name==='staff')renderStaff();
+  ['overview','plans','tracker','matrix','charts','staff'].forEach(t=>{document.getElementById('tab-'+t).style.display=t===name?'block':'none';});
+  if(name==='charts')renderCharts();
+  if(name==='overview')renderOverview();
+  if(name==='matrix')renderMatrix();
+  if(name==='tracker')renderTracker();
+  if(name==='plans')renderPlans();
+  if(name==='staff')renderStaff();
 }
 
+// --- MODAL CONTROLS ---
 function openAdd(){
-  document.getElementById('fStaff').value='';
-  document.getElementById('fStaffIncharge').value='';
-  document.getElementById('fPresPhone').value='';
-  document.getElementById('fSecPhone').value='';
-  document.getElementById('fDate').value='';
-  document.getElementById('fFindings').value='';
-  document.getElementById('fStatus').value='Done';
-  document.getElementById('fTime').value='';
+  document.getElementById('fStaff').value=''; document.getElementById('fStaffIncharge').value='';
+  document.getElementById('fPresPhone').value=''; document.getElementById('fSecPhone').value='';
+  document.getElementById('fDate').value=''; document.getElementById('fFindings').value='';
+  document.getElementById('fStatus').value='Done'; document.getElementById('fTime').value='';
   document.getElementById('modalBg').classList.add('open');
   populateCLF(); 
 }
-
 function closeModal(){document.getElementById('modalBg').classList.remove('open');}
 
-async function saveEntry(){
-  const clfSel = document.getElementById('fCLF');
-  const ds = document.getElementById('fDate').value;
-  const monSelected = document.getElementById('fMonth').value;
-  const tVal = document.getElementById('fTime').value;
+function openAssignModal(){
+  document.getElementById('aStaff').value=''; document.getElementById('aStaffIncharge').value='';
+  document.getElementById('aDate').value=''; document.getElementById('aTime').value='';
+  document.getElementById('aInstructions').value=''; document.getElementById('aUnit').value='DMMU';
+  document.getElementById('assignModalBg').classList.add('open');
+  populateAssignCLF(); 
+}
+function closeAssignModal(){document.getElementById('assignModalBg').classList.remove('open');}
+
+function logFromPlan(id) {
+   const p = entries.find(e => e.id === id);
+   if(!p) return;
+   openAdd(); // opens normal modal
+   setTimeout(() => {
+     document.getElementById('fMonth').value = p.month;
+     document.getElementById('fBlock').value = p.block;
+     populateCLF();
+     setTimeout(() => {
+        document.getElementById('fCLF').value = p.clfName;
+        document.getElementById('fStaff').value = p.staff;
+        document.getElementById('fStaffIncharge').value = p.staffIncharge || '';
+        document.getElementById('fDate').value = p.date;
+        document.getElementById('fTime').value = p.time;
+        document.getElementById('fUnit').value = p.unit;
+        document.getElementById('fStatus').value = 'Done';
+     }, 50);
+   }, 50);
+}
+
+// --- SAVING DATA ---
+async function saveEntry(type){
+  const isAssign = (type === 'Assign');
+  const prefix = isAssign ? 'a' : 'f';
+  
+  const clfSel = document.getElementById(prefix + 'CLF');
+  const ds = document.getElementById(prefix + 'Date').value;
+  const monSelected = document.getElementById(prefix + 'Month').value;
+  const tVal = document.getElementById(prefix + 'Time').value;
   
   const selectedOption = clfSel.options[clfSel.selectedIndex];
   const code = selectedOption ? selectedOption.dataset.code : '';
   
-  // ------------------------------------------------------------
-  // EXACT PAYLOAD MAPPING: Sends BOTH exact headers and old keys 
-  // ------------------------------------------------------------
   const payload = {
-    // 1. EXACT HEADERS (Matches your Google Sheet screenshot perfectly)
+    // EXACT HEADERS
     "District": "West Khasi Hills",
-    "Block": document.getElementById('fBlock').value,
+    "Block": document.getElementById(prefix + 'Block').value,
     "CLF Code": code,
     "CLF Name": clfSel.value,
-    "President Phone No": document.getElementById('fPresPhone').value.trim(),
-    "Secretary Phone No": document.getElementById('fSecPhone').value.trim(),
-    "Staff Incharge": document.getElementById('fStaffIncharge').value.trim(),
+    "President Phone No": isAssign ? "" : document.getElementById('fPresPhone').value.trim(),
+    "Secretary Phone No": isAssign ? "" : document.getElementById('fSecPhone').value.trim(),
+    "Staff Incharge": document.getElementById(prefix + 'StaffIncharge').value.trim(),
     "Meeting Date": ds,
     "Meeting Time": tVal,
-    "Name of Staff attending": document.getElementById('fStaff').value.trim(),
-    "Unit": document.getElementById('fUnit').value,
-    "Findings": document.getElementById('fFindings').value.trim() || 'NII',
-    "Status": document.getElementById('fStatus').value,
-    "Month": monSelected,
-
-    // 2. FALLBACK/LOCAL KEYS (So the dashboard doesn't break locally)
-    month: monSelected,
-    block: document.getElementById('fBlock').value,
-    clfCode: code, 
-    clfName: clfSel.value,
-    staff: document.getElementById('fStaff').value.trim(),
-    date: ds,
-    time: tVal,
-    unit: document.getElementById('fUnit').value,
-    status: document.getElementById('fStatus').value,
-    findings: document.getElementById('fFindings').value.trim() || 'NII',
-    presidentPhone: document.getElementById('fPresPhone').value.trim(),
-    secretaryPhone: document.getElementById('fSecPhone').value.trim(),
-    staffIncharge: document.getElementById('fStaffIncharge').value.trim()
+    "Name of Staff attending": document.getElementById(prefix + 'Staff').value.trim(),
+    "Unit": document.getElementById(prefix + 'Unit').value,
+    "Findings": isAssign ? document.getElementById('aInstructions').value.trim() : (document.getElementById('fFindings').value.trim() || 'NII'),
+    "Status": isAssign ? "Planned" : document.getElementById('fStatus').value,
+    "Month": monSelected
   };
   
   payload.id = Date.now();
-  entries.push(payload);
-  closeModal();
-  updateHeader(); renderOverview(); renderTracker(); renderStaff();
+  entries.push(payload); // local push for instant feedback
+  
+  if(isAssign) closeAssignModal(); else closeModal();
+  updateHeader(); renderOverview(); renderPlans(); renderTracker(); renderStaff();
   
   try {
-    console.log("Sending payload to Google Sheets:", payload);
     await fetch(GOOGLE_SHEET_API_URL, {
       method: 'POST',
       mode: 'no-cors', 
@@ -625,7 +755,6 @@ async function saveEntry(){
     });
     setTimeout(loadDashboardData, 1500); 
   } catch (error) {
-    console.error("Error saving data:", error);
     alert("Warning: Could not save the entry to Google Sheets.");
   }
 }
@@ -644,22 +773,54 @@ function getFiltered(){
   return d;
 }
 
-function statusBadge(s){const m={Done:'s-done',Pending:'s-pending',Missed:'s-missed'};return`<span class="status ${m[s.trim()]||'s-pending'}">${s.trim()}</span>`;}
+function statusBadge(s){const m={Done:'s-done',Pending:'s-pending',Missed:'s-missed',Planned:'s-planned'};return`<span class="status ${m[s.trim()]||'s-pending'}">${s.trim()}</span>`;}
 
+// --- RENDER PLANS TAB ---
+function renderPlans(){
+  const sf=document.getElementById('planFilterStaff')?.value;
+  let d = entries.filter(e => e.status === 'Planned');
+  if(sf) d = d.filter(e => e.staff === sf);
+
+  document.getElementById('planCount').textContent = `Showing ${d.length} Planned Assignments`;
+  const tbody = document.getElementById('plansBody');
+  if(!d.length){
+     tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:28px">No planned meetings found.</td></tr>`;
+     return;
+  }
+  tbody.innerHTML = d.map(e => `<tr>
+    <td style="color:var(--green2);font-weight:500">${e.month}</td>
+    <td style="font-weight:500">${e.block}</td>
+    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.clfName}">${e.clfName}</td>
+    <td><span class="assign-chip">${e.staff||'—'}</span></td>
+    <td style="color:var(--text2)">${e.date||'—'}</td>
+    <td style="color:var(--text3);font-size:12px">${e.time||'—'}</td>
+    <td><span style="background:rgba(41,182,246,.12);color:#29b6f6;border:1px solid rgba(41,182,246,.25);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${e.unit}</span></td>
+    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--amber);font-size:12px" title="${e.findings}">${e.findings}</td>
+    <td>${statusBadge(e.status)}</td>
+    <td>
+      <button style="font-size:11px; padding:3px 8px; border-color:var(--green2); color:var(--green2); background:transparent;" onclick="logFromPlan(${e.id})">✔ Log</button>
+      <button class="danger" onclick="deleteEntry(${e.id})">Del</button>
+    </td>
+  </tr>`).join('');
+}
+
+// --- RENDER TRACKER TAB ---
 function renderTracker(){
   const f=getFiltered();
   document.getElementById('trackerCount').textContent='Showing '+f.length+' of '+entries.length+' records';
   const tbody=document.getElementById('trackerBody');
-  if(!f.length){tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:28px">No entries found.</td></tr>`;return;}
-  
-  // FIX: Output exactly 10 <td> elements corresponding to the 10 <th> headers in the table.
+  if(!f.length){tbody.innerHTML=`<tr><td colspan="14" style="text-align:center;color:var(--text3);padding:28px">No entries found.</td></tr>`;return;}
   tbody.innerHTML=f.map(e=>`<tr>
     <td style="color:var(--green2);font-weight:500">${e.month}</td>
     <td style="font-weight:500">${e.block}</td>
     <td style="font-size:11px;color:var(--text3)">${e.clfCode}</td>
     <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.clfName}">${e.clfName}</td>
+    <td style="font-size:11px;color:var(--text3)">${e.presidentPhone||'—'}</td>
+    <td style="font-size:11px;color:var(--text3)">${e.secretaryPhone||'—'}</td>
     <td><span class="staff-chip">${e.staff||'—'}</span></td>
+    <td style="font-size:11px;color:var(--text2)">${e.staffIncharge||'—'}</td>
     <td style="color:var(--text2)">${e.date||'—'}</td>
+    <td style="color:var(--text3);font-size:12px">${e.time||'—'}</td>
     <td><span style="background:rgba(41,182,246,.12);color:#29b6f6;border:1px solid rgba(41,182,246,.25);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${e.unit}</span></td>
     <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text3);font-size:12px" title="${e.findings}">${e.findings}</td>
     <td>${statusBadge(e.status)}</td>
@@ -670,7 +831,7 @@ function renderTracker(){
 function renderMatrix(){
   const blk=document.getElementById('matrixBlock').value;
   document.getElementById('monthMatrix').innerHTML=MONTHS.map(m=>{
-    let d=entries.filter(e=>e.month===m);
+    let d=entries.filter(e=>e.month===m && e.status!=='Planned'); // Don't count pure plans in matrix completion
     if(blk)d=d.filter(e=>e.block===blk);
     const done=d.filter(e=>e.status==='Done').length;
     const pend=d.filter(e=>e.status==='Pending').length;
@@ -688,22 +849,23 @@ function renderMatrix(){
 }
 
 function showMonthDetail(m, blk){
-  let d=entries.filter(e=>e.month===m);
+  let d=entries.filter(e=>e.month===m && e.status!=='Planned');
   if(blk)d=d.filter(e=>e.block===blk);
   const el=document.getElementById('matrixDetail');
   if(!d.length){
     el.innerHTML=`<div style="color:var(--text3);padding:8px">No entries for ${m}.</div>`; return;
   }
-  
-  // FIX: Output exactly 8 <td> elements corresponding to the 8 <th> headers in this sub-table.
   el.innerHTML=`<h3 style="margin-bottom:10px;color:var(--green2)">${m} Details (${d.length} visits)</h3>
   <div style="overflow-x:auto"><table>
-    <thead><tr><th>Block</th><th>CLF Name</th><th>Staff</th><th>Date</th><th>Time</th><th>Unit</th><th>Status</th><th>Findings</th></tr></thead>
+    <thead><tr><th>Block</th><th>CLF Name</th><th>President Phone</th><th>Secretary Phone</th><th>Staff Attending</th><th>Staff Incharge</th><th>Date</th><th>Time</th><th>Unit</th><th>Status</th><th>Findings</th></tr></thead>
     <tbody>${d.map(e=>`<tr>
       <td>${e.block}</td>
-      <td>${e.clfName}</td>
+      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.clfName}">${e.clfName}</td>
+      <td style="font-size:11px;color:var(--text3)">${e.presidentPhone||'—'}</td>
+      <td style="font-size:11px;color:var(--text3)">${e.secretaryPhone||'—'}</td>
       <td><span class="staff-chip">${e.staff||'—'}</span></td>
-      <td>${e.date}</td>
+      <td style="font-size:11px;color:var(--text2)">${e.staffIncharge||'—'}</td>
+      <td>${e.date||'—'}</td>
       <td style="color:var(--text3)">${e.time||'—'}</td>
       <td>${e.unit}</td>
       <td>${statusBadge(e.status)}</td>
@@ -713,7 +875,8 @@ function showMonthDetail(m, blk){
 }
 
 function renderOverview(){
-  const total=entries.length,done=entries.filter(e=>e.status==='Done').length,pend=entries.filter(e=>e.status==='Pending').length,miss=entries.filter(e=>e.status==='Missed').length;
+  let validEntries = entries.filter(e => e.status !== 'Planned');
+  const total=validEntries.length,done=validEntries.filter(e=>e.status==='Done').length,pend=validEntries.filter(e=>e.status==='Pending').length,miss=validEntries.filter(e=>e.status==='Missed').length;
   const pct=total?Math.round(done/total*100):0;
   const totalCLF = Object.values(CLF_DATA).reduce((sum, arr) => sum + arr.length, 0);
 
@@ -726,7 +889,7 @@ function renderOverview(){
     <div class="card gold"><div class="lbl">Total Target CLFs</div><div class="val">${totalCLF}</div></div>
   `;
   document.getElementById('monthProgress').innerHTML=MONTHS.map(m=>{
-    const mt=entries.filter(e=>e.month===m).length,md=entries.filter(e=>e.month===m&&e.status==='Done').length;
+    const mt=validEntries.filter(e=>e.month===m).length,md=validEntries.filter(e=>e.month===m&&e.status==='Done').length;
     const pp=mt?Math.round(md/mt*100):0;
     const col=pp>75?'var(--green2)':pp>40?'var(--amber)':'var(--red)';
     return`<div class="month-row">
@@ -737,7 +900,7 @@ function renderOverview(){
     </div>`;
   }).join('');
   document.getElementById('blockSummary').innerHTML=BLOCKS.map(b=>{
-    const bE=entries.filter(e=>e.block===b),bd=bE.filter(e=>e.status==='Done').length,bp=bE.filter(e=>e.status==='Pending').length,bm=bE.filter(e=>e.status==='Missed').length,pp=bE.length?Math.round(bd/bE.length*100):0;
+    const bE=validEntries.filter(e=>e.block===b),bd=bE.filter(e=>e.status==='Done').length,bp=bE.filter(e=>e.status==='Pending').length,bm=bE.filter(e=>e.status==='Missed').length,pp=bE.length?Math.round(bd/bE.length*100):0;
     return`<div class="ov-card ${pp<40&&bE.length?'red':bp>bd?'amber':''}">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-weight:600">${b}</span><span style="font-size:11px;color:var(--text3)">${bE.length} visits</span></div>
       <div style="display:flex;gap:10px;font-size:11px;margin-bottom:5px"><span style="color:#69f0ae">&#10003; ${bd} Done</span><span style="color:#ffb74d">&#9679; ${bp} Pending</span><span style="color:#ef9a9a">&#10007; ${bm} Missed</span></div>
@@ -749,6 +912,7 @@ function renderOverview(){
 function renderStaff(){
   const staffMap={};
   entries.forEach(e=>{
+    if(e.status === 'Planned') return; // Only score actual logs
     const s=e.staff||'Unknown';
     if(!staffMap[s])staffMap[s]={name:s,total:0,done:0,pending:0,missed:0,blocks:new Set(),units:new Set()};
     staffMap[s].total++;
@@ -779,18 +943,22 @@ function renderStaff(){
 
 let barChart,pieChart,lineChart,unitChart;
 function renderCharts(){
-  const blockCounts=BLOCKS.map(b=>entries.filter(e=>e.block===b).length);
-  const done=entries.filter(e=>e.status==='Done').length,pend=entries.filter(e=>e.status==='Pending').length,miss=entries.filter(e=>e.status==='Missed').length;
-  const monthCounts=MONTHS.map(m=>entries.filter(e=>e.month===m).length);
-  const dmmC=MONTHS.map(m=>entries.filter(e=>e.month===m&&e.unit==='DMMU').length);
-  const bmmC=MONTHS.map(m=>entries.filter(e=>e.month===m&&e.unit==='BMMU').length);
+  let dEntries = entries.filter(e => e.status !== 'Planned');
+  const blockCounts=BLOCKS.map(b=>dEntries.filter(e=>e.block===b).length);
+  const done=dEntries.filter(e=>e.status==='Done').length;
+  const pend=dEntries.filter(e=>e.status==='Pending').length;
+  const miss=dEntries.filter(e=>e.status==='Missed').length;
+  const planned=entries.filter(e=>e.status==='Planned').length;
+  const monthCounts=MONTHS.map(m=>dEntries.filter(e=>e.month===m).length);
+  const dmmC=MONTHS.map(m=>dEntries.filter(e=>e.month===m&&e.unit==='DMMU').length);
+  const bmmC=MONTHS.map(m=>dEntries.filter(e=>e.month===m&&e.unit==='BMMU').length);
   
   if(barChart)barChart.destroy();if(pieChart)pieChart.destroy();if(lineChart)lineChart.destroy();if(unitChart)unitChart.destroy();
   const gc=(id,c1,c2)=>{const g=document.getElementById(id).getContext('2d').createLinearGradient(0,0,0,220);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;};
   const gridCfg={color:'rgba(0,200,83,.07)'};const tickCfg={color:'#558b5a'};
   
   barChart=new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:BLOCKS,datasets:[{data:blockCounts,backgroundColor:gc('barChart','#00e676','#00c85344'),borderColor:'#00c853',borderWidth:1,borderRadius:6}]},options:{animation:false,responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{...tickCfg,font:{size:10}},grid:gridCfg},y:{beginAtZero:true,ticks:{...tickCfg,stepSize:1},grid:gridCfg}}}});
-  pieChart=new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels:['Done','Pending','Missed'],datasets:[{data:[done||0.1,pend,miss],backgroundColor:['#00c853','#ff9800','#ef5350'],borderColor:'#0a0f0a',borderWidth:3,hoverOffset:8}]},options:{animation:false,responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}});
+  pieChart=new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels:['Done','Pending','Missed','Planned'],datasets:[{data:[done||0.1,pend,miss,planned],backgroundColor:['#00c853','#ff9800','#ef5350','#29b6f6'],borderColor:'#0a0f0a',borderWidth:3,hoverOffset:8}]},options:{animation:false,responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}});
   
   const lCtx=document.getElementById('lineChart').getContext('2d');
   const lg=lCtx.createLinearGradient(0,0,0,220);lg.addColorStop(0,'rgba(0,200,83,.3)');lg.addColorStop(1,'rgba(0,200,83,0)');
@@ -801,7 +969,7 @@ function renderCharts(){
 
 async function downloadPDF() {
   const btn = document.getElementById('pdfBtn');
-  if (btn) { btn.innerHTML = '⏳ Generating PDF...'; btn.disabled = true; }
+  if (btn) { btn.innerHTML = '⏳ Generating...'; btn.disabled = true; }
   try {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('l', 'mm', 'a4');
@@ -815,7 +983,7 @@ async function downloadPDF() {
 
     for (let sec of sectionsToExport) {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      ['overview','tracker','matrix','charts','staff'].forEach(t => { document.getElementById('tab-'+t).style.display = (t === sec) ? 'block' : 'none'; });
+      ['overview','plans','tracker','matrix','charts','staff'].forEach(t => { document.getElementById('tab-'+t).style.display = (t === sec) ? 'block' : 'none'; });
       if (sec === 'charts') renderCharts();
       await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -862,13 +1030,13 @@ async function downloadPDF() {
 
     pdf.save('CLF_Dashboard_Report.pdf');
     if (activeTabEl) {
-      let tabMap = { 'overview':'overview', 'tracker':'tracker', 'monthlymatrix':'matrix', 'charts':'charts', 'staff':'staff' };
+      let tabMap = { 'overview':'overview', 'tracker':'tracker', 'meetingplans':'plans', 'monthlymatrix':'matrix', 'charts':'charts', 'staff':'staff' };
       switchTab(tabMap[activeTabName] || 'overview', activeTabEl);
     }
   } catch (error) {
     console.error("PDF Error:", error); alert("Error generating PDF.");
   }
-  if (btn) { btn.innerHTML = '&#128196; Download PDF'; btn.disabled = false; }
+  if (btn) { btn.innerHTML = '&#128196; PDF'; btn.disabled = false; }
 }
 
 function initApp() {
