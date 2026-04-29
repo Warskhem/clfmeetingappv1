@@ -160,11 +160,8 @@ textarea{width:100%;resize:vertical;min-height:70px}
   <div class="login-box">
     <h1 style="color:var(--green2); margin-bottom:10px;">&#9670; CLF Tracker</h1>
     <p style="color:var(--text3); font-size:13px; line-height:1.5;">West Khasi Hills District<br>Restricted Access Dashboard</p>
-    
     <input type="password" id="passInput" placeholder="Enter Password" onkeypress="if(event.keyCode===13) checkPassword()">
-    
     <button class="primary" style="width:100%; padding:12px; font-size:15px;" onclick="checkPassword()">Login Securely</button>
-    
     <p id="loginError" style="color:var(--red); font-size:13px; margin-top:15px; display:none; font-weight:600;">Incorrect Password. Please try again.</p>
   </div>
 </div>
@@ -417,10 +414,7 @@ textarea{width:100%;resize:vertical;min-height:70px}
 
 
 <script>
-// ==========================================
-// 🔒 SET YOUR PASSWORD HERE
 const APP_PASSWORD = "NRLM2026"; 
-// ==========================================
 
 function checkPassword() {
   const val = document.getElementById('passInput').value;
@@ -692,7 +686,7 @@ function closeAssignModal(){document.getElementById('assignModalBg').classList.r
 function logFromPlan(id) {
    const p = entries.find(e => e.id === id);
    if(!p) return;
-   openAdd(); // opens normal modal
+   openAdd(); 
    setTimeout(() => {
      document.getElementById('fMonth').value = p.month;
      document.getElementById('fBlock').value = p.block;
@@ -709,7 +703,9 @@ function logFromPlan(id) {
    }, 50);
 }
 
-// --- SAVING DATA ---
+// =========================================================================
+// 🚀 CRITICAL FIX: EXACT GOOGLE SHEET HEADERS AS JSON KEYS
+// =========================================================================
 async function saveEntry(type){
   const isAssign = (type === 'Assign');
   const prefix = isAssign ? 'a' : 'f';
@@ -722,26 +718,47 @@ async function saveEntry(type){
   const selectedOption = clfSel.options[clfSel.selectedIndex];
   const code = selectedOption ? selectedOption.dataset.code : '';
   
+  // SECURE LOCAL KEYS SO PREVIEW WORKS IMMEDIATELY
+  const finalStatus = isAssign ? "Planned" : document.getElementById('fStatus').value;
+  const finalFindings = isAssign ? document.getElementById('aInstructions').value.trim() : (document.getElementById('fFindings').value.trim() || 'NII');
+  const finalPresPhone = isAssign ? "" : document.getElementById('fPresPhone').value.trim();
+  const finalSecPhone = isAssign ? "" : document.getElementById('fSecPhone').value.trim();
+
   const payload = {
-    // EXACT HEADERS
+    // 1. EXACT HEADERS 
     "District": "West Khasi Hills",
     "Block": document.getElementById(prefix + 'Block').value,
     "CLF Code": code,
     "CLF Name": clfSel.value,
-    "President Phone No": isAssign ? "" : document.getElementById('fPresPhone').value.trim(),
-    "Secretary Phone No": isAssign ? "" : document.getElementById('fSecPhone').value.trim(),
+    "President Phone No": finalPresPhone,
+    "Secretary Phone No": finalSecPhone,
     "Staff Incharge": document.getElementById(prefix + 'StaffIncharge').value.trim(),
     "Meeting Date": ds,
     "Meeting Time": tVal,
     "Name of Staff attending": document.getElementById(prefix + 'Staff').value.trim(),
     "Unit": document.getElementById(prefix + 'Unit').value,
-    "Findings": isAssign ? document.getElementById('aInstructions').value.trim() : (document.getElementById('fFindings').value.trim() || 'NII'),
-    "Status": isAssign ? "Planned" : document.getElementById('fStatus').value,
-    "Month": monSelected
+    "Findings": finalFindings,
+    "Status": finalStatus,
+    "Month": monSelected,
+
+    // 2. FALLBACK/LOCAL KEYS (So the dashboard perfectly updates instantly)
+    month: monSelected,
+    block: document.getElementById(prefix + 'Block').value,
+    clfCode: code, 
+    clfName: clfSel.value,
+    staff: document.getElementById(prefix + 'Staff').value.trim(),
+    date: ds,
+    time: tVal,
+    unit: document.getElementById(prefix + 'Unit').value,
+    status: finalStatus, // <-- FIX: Assigns "Planned" correctly!
+    findings: finalFindings,
+    presidentPhone: finalPresPhone,
+    secretaryPhone: finalSecPhone,
+    staffIncharge: document.getElementById(prefix + 'StaffIncharge').value.trim(),
+    id: Date.now()
   };
   
-  payload.id = Date.now();
-  entries.push(payload); // local push for instant feedback
+  entries.push(payload);
   
   if(isAssign) closeAssignModal(); else closeModal();
   updateHeader(); renderOverview(); renderPlans(); renderTracker(); renderStaff();
@@ -831,7 +848,7 @@ function renderTracker(){
 function renderMatrix(){
   const blk=document.getElementById('matrixBlock').value;
   document.getElementById('monthMatrix').innerHTML=MONTHS.map(m=>{
-    let d=entries.filter(e=>e.month===m && e.status!=='Planned'); // Don't count pure plans in matrix completion
+    let d=entries.filter(e=>e.month===m && e.status!=='Planned'); 
     if(blk)d=d.filter(e=>e.block===blk);
     const done=d.filter(e=>e.status==='Done').length;
     const pend=d.filter(e=>e.status==='Pending').length;
@@ -912,7 +929,7 @@ function renderOverview(){
 function renderStaff(){
   const staffMap={};
   entries.forEach(e=>{
-    if(e.status === 'Planned') return; // Only score actual logs
+    if(e.status === 'Planned') return; 
     const s=e.staff||'Unknown';
     if(!staffMap[s])staffMap[s]={name:s,total:0,done:0,pending:0,missed:0,blocks:new Set(),units:new Set()};
     staffMap[s].total++;
