@@ -160,8 +160,11 @@ textarea{width:100%;resize:vertical;min-height:70px}
   <div class="login-box">
     <h1 style="color:var(--green2); margin-bottom:10px;">&#9670; CLF Tracker</h1>
     <p style="color:var(--text3); font-size:13px; line-height:1.5;">West Khasi Hills District<br>Restricted Access Dashboard</p>
+    
     <input type="password" id="passInput" placeholder="Enter Password" onkeypress="if(event.keyCode===13) checkPassword()">
+    
     <button class="primary" style="width:100%; padding:12px; font-size:15px;" onclick="checkPassword()">Login Securely</button>
+    
     <p id="loginError" style="color:var(--red); font-size:13px; margin-top:15px; display:none; font-weight:600;">Incorrect Password. Please try again.</p>
   </div>
 </div>
@@ -342,7 +345,7 @@ textarea{width:100%;resize:vertical;min-height:70px}
 <div class="modal-bg" id="modalBg">
   <div class="modal">
     <span class="modal-close" onclick="closeModal()">&#10005;</span>
-    <h2 style="margin-bottom:20px;color:var(--green2)">&#9670; Log CLF Visit</h2>
+    <h2 style="margin-bottom:20px;color:var(--green2)" id="modalTitle">&#9670; Log CLF Visit</h2>
     
     <div class="form-row">
       <div><label>MONTH</label><select id="fMonth" style="width:100%"></select></div>
@@ -414,7 +417,10 @@ textarea{width:100%;resize:vertical;min-height:70px}
 
 
 <script>
+// ==========================================
+// 🔒 SET YOUR PASSWORD HERE
 const APP_PASSWORD = "NRLM2026"; 
+// ==========================================
 
 function checkPassword() {
   const val = document.getElementById('passInput').value;
@@ -486,9 +492,11 @@ const CLF_DATA = {
 const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyGdde_gYIL2PE5s6BsjZghUoiYOOrqXr897O3mlGl1WX-aRunSD9NovjyQOPeL2e0Isw/exec";
 
 let entries = [];
+// This tracks if we are updating an existing entry
+let currentEditId = null;
 
 function updateHeader() {
-  const t = entries.length;
+  const t = entries.filter(e=>e.status!=='Planned').length; // Standard Tracker Total
   const d = entries.filter(e=>e.status==='Done').length;
   const p = entries.filter(e=>e.status==='Pending').length;
   const m = entries.filter(e=>e.status==='Missed').length;
@@ -577,7 +585,7 @@ async function loadDashboardData() {
         presidentPhone: String(getCol('PresidentPhone') || getCol('President Phone No') || ''),
         secretaryPhone: String(getCol('SecretaryPhone') || getCol('Secretary Phone No') || ''),
         staffIncharge: String(getCol('StaffIncharge') || getCol('Staff Incharge') || ''),
-        id: index
+        id: index // Index perfectly maps to Sheet Row!
       });
     });
 
@@ -663,18 +671,26 @@ function switchTab(name,el){
   if(name==='staff')renderStaff();
 }
 
-// --- MODAL CONTROLS ---
-function openAdd(){
-  document.getElementById('fStaff').value=''; document.getElementById('fStaffIncharge').value='';
-  document.getElementById('fPresPhone').value=''; document.getElementById('fSecPhone').value='';
-  document.getElementById('fDate').value=''; document.getElementById('fFindings').value='';
-  document.getElementById('fStatus').value='Done'; document.getElementById('fTime').value='';
+// --- MODAL CONTROLS WITH EDIT SUPPORT ---
+function openAdd(isEdit = false){
+  if (!isEdit) {
+    currentEditId = null; // Clear ID if it's a brand new entry
+    document.getElementById('modalTitle').innerHTML = '&#9670; Log CLF Visit';
+    document.getElementById('fStaff').value=''; document.getElementById('fStaffIncharge').value='';
+    document.getElementById('fPresPhone').value=''; document.getElementById('fSecPhone').value='';
+    document.getElementById('fDate').value=''; document.getElementById('fFindings').value='';
+    document.getElementById('fStatus').value='Done'; document.getElementById('fTime').value='';
+    populateCLF(); 
+  } else {
+    document.getElementById('modalTitle').innerHTML = '&#9670; Log Planned Visit';
+  }
   document.getElementById('modalBg').classList.add('open');
-  populateCLF(); 
 }
+
 function closeModal(){document.getElementById('modalBg').classList.remove('open');}
 
 function openAssignModal(){
+  currentEditId = null; // Cannot update via assign modal
   document.getElementById('aStaff').value=''; document.getElementById('aStaffIncharge').value='';
   document.getElementById('aDate').value=''; document.getElementById('aTime').value='';
   document.getElementById('aInstructions').value=''; document.getElementById('aUnit').value='DMMU';
@@ -683,28 +699,36 @@ function openAssignModal(){
 }
 function closeAssignModal(){document.getElementById('assignModalBg').classList.remove('open');}
 
+// This function pulls the data from the Plan and injects it into the Edit Form
 function logFromPlan(id) {
    const p = entries.find(e => e.id === id);
    if(!p) return;
-   openAdd(); 
+   
+   currentEditId = id; // Lock in the ID we are updating!
+   openAdd(true); 
+   
    setTimeout(() => {
      document.getElementById('fMonth').value = p.month;
      document.getElementById('fBlock').value = p.block;
      populateCLF();
+     
      setTimeout(() => {
         document.getElementById('fCLF').value = p.clfName;
         document.getElementById('fStaff').value = p.staff;
         document.getElementById('fStaffIncharge').value = p.staffIncharge || '';
+        document.getElementById('fPresPhone').value = p.presidentPhone || '';
+        document.getElementById('fSecPhone').value = p.secretaryPhone || '';
         document.getElementById('fDate').value = p.date;
         document.getElementById('fTime').value = p.time;
         document.getElementById('fUnit').value = p.unit;
         document.getElementById('fStatus').value = 'Done';
+        document.getElementById('fFindings').value = p.findings; // Preserve DMM Instructions so they can add to it
      }, 50);
    }, 50);
 }
 
 // =========================================================================
-// 🚀 CRITICAL FIX: EXACT GOOGLE SHEET HEADERS AS JSON KEYS
+// 🚀 CRITICAL FIX: EXACT GOOGLE SHEET HEADERS AND UPDATE LOGIC
 // =========================================================================
 async function saveEntry(type){
   const isAssign = (type === 'Assign');
@@ -718,7 +742,6 @@ async function saveEntry(type){
   const selectedOption = clfSel.options[clfSel.selectedIndex];
   const code = selectedOption ? selectedOption.dataset.code : '';
   
-  // SECURE LOCAL KEYS SO PREVIEW WORKS IMMEDIATELY
   const finalStatus = isAssign ? "Planned" : document.getElementById('fStatus').value;
   const finalFindings = isAssign ? document.getElementById('aInstructions').value.trim() : (document.getElementById('fFindings').value.trim() || 'NII');
   const finalPresPhone = isAssign ? "" : document.getElementById('fPresPhone').value.trim();
@@ -739,27 +762,62 @@ async function saveEntry(type){
     "Unit": document.getElementById(prefix + 'Unit').value,
     "Findings": finalFindings,
     "Status": finalStatus,
-    "Month": monSelected,
-
-    // 2. FALLBACK/LOCAL KEYS (So the dashboard perfectly updates instantly)
-    month: monSelected,
-    block: document.getElementById(prefix + 'Block').value,
-    clfCode: code, 
-    clfName: clfSel.value,
-    staff: document.getElementById(prefix + 'Staff').value.trim(),
-    date: ds,
-    time: tVal,
-    unit: document.getElementById(prefix + 'Unit').value,
-    status: finalStatus, // <-- FIX: Assigns "Planned" correctly!
-    findings: finalFindings,
-    presidentPhone: finalPresPhone,
-    secretaryPhone: finalSecPhone,
-    staffIncharge: document.getElementById(prefix + 'StaffIncharge').value.trim(),
-    id: Date.now()
+    "Month": monSelected
   };
+
+  // ----------------------------------------------------
+  // UPDATE VS APPEND LOGIC
+  // ----------------------------------------------------
+  if (currentEditId !== null) {
+      // It's an UPDATE!
+      payload.action = "update";
+      payload.rowNumber = currentEditId + 2; // Map JS index to Sheet Row
+
+      const localIndex = entries.findIndex(e => e.id === currentEditId);
+      if(localIndex !== -1) {
+          // Update local array instantly
+          entries[localIndex] = {
+              month: payload.Month,
+              block: payload.Block,
+              clfCode: payload["CLF Code"],
+              clfName: payload["CLF Name"],
+              staff: payload["Name of Staff attending"],
+              date: payload["Meeting Date"],
+              time: payload["Meeting Time"],
+              unit: payload.Unit,
+              status: payload.Status,
+              findings: payload.Findings,
+              presidentPhone: payload["President Phone No"],
+              secretaryPhone: payload["Secretary Phone No"],
+              staffIncharge: payload["Staff Incharge"],
+              id: currentEditId
+          };
+      }
+  } else {
+      // It's a BRAND NEW ROW!
+      payload.action = "append";
+      payload.id = Date.now();
+      
+      // Push locally instantly
+      entries.push({
+          month: payload.Month,
+          block: payload.Block,
+          clfCode: payload["CLF Code"],
+          clfName: payload["CLF Name"],
+          staff: payload["Name of Staff attending"],
+          date: payload["Meeting Date"],
+          time: payload["Meeting Time"],
+          unit: payload.Unit,
+          status: payload.Status,
+          findings: payload.Findings,
+          presidentPhone: payload["President Phone No"],
+          secretaryPhone: payload["Secretary Phone No"],
+          staffIncharge: payload["Staff Incharge"],
+          id: payload.id
+      });
+  }
   
-  entries.push(payload);
-  
+  currentEditId = null; // Reset for next time
   if(isAssign) closeAssignModal(); else closeModal();
   updateHeader(); renderOverview(); renderPlans(); renderTracker(); renderStaff();
   
@@ -770,9 +828,10 @@ async function saveEntry(type){
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload) 
     });
-    setTimeout(loadDashboardData, 1500); 
+    // Wait a moment before pulling fresh to let Google catch up
+    setTimeout(loadDashboardData, 2000); 
   } catch (error) {
-    alert("Warning: Could not save the entry to Google Sheets.");
+    alert("Warning: Could not communicate with Google Sheets.");
   }
 }
 
@@ -783,7 +842,8 @@ function deleteEntry(id){
 function resetFilters(){['filterMonth','filterBlock','filterStaff','filterUnit','filterStatus'].forEach(id=>{document.getElementById(id).value='';});renderTracker();}
 
 function getFiltered(){
-  let d=[...entries];
+  // Exclude 'Planned' from the Tracker tab!
+  let d = entries.filter(e => e.status !== 'Planned');
   const m=document.getElementById('filterMonth')?.value,b=document.getElementById('filterBlock')?.value,
         sf=document.getElementById('filterStaff')?.value,u=document.getElementById('filterUnit')?.value,s=document.getElementById('filterStatus')?.value;
   if(m)d=d.filter(e=>e.month===m);if(b)d=d.filter(e=>e.block===b);if(sf)d=d.filter(e=>e.staff===sf);if(u)d=d.filter(e=>e.unit===u);if(s)d=d.filter(e=>e.status===s);
@@ -815,8 +875,7 @@ function renderPlans(){
     <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--amber);font-size:12px" title="${e.findings}">${e.findings}</td>
     <td>${statusBadge(e.status)}</td>
     <td>
-      <button style="font-size:11px; padding:3px 8px; border-color:var(--green2); color:var(--green2); background:transparent;" onclick="logFromPlan(${e.id})">✔ Log</button>
-      <button class="danger" onclick="deleteEntry(${e.id})">Del</button>
+      <button style="font-size:11px; padding:3px 8px; border-color:var(--green2); color:var(--green2); background:transparent; cursor:pointer;" onclick="logFromPlan(${e.id})">✔ Log</button>
     </td>
   </tr>`).join('');
 }
@@ -824,7 +883,7 @@ function renderPlans(){
 // --- RENDER TRACKER TAB ---
 function renderTracker(){
   const f=getFiltered();
-  document.getElementById('trackerCount').textContent='Showing '+f.length+' of '+entries.length+' records';
+  document.getElementById('trackerCount').textContent='Showing '+f.length+' logged records';
   const tbody=document.getElementById('trackerBody');
   if(!f.length){tbody.innerHTML=`<tr><td colspan="14" style="text-align:center;color:var(--text3);padding:28px">No entries found.</td></tr>`;return;}
   tbody.innerHTML=f.map(e=>`<tr>
