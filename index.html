@@ -872,6 +872,12 @@ async function saveEntry(type){
   const isAssign = (type === 'Assign');
   const prefix = isAssign ? 'a' : 'f';
   
+  // Protect against editing newly added but unsynced rows
+  if (currentEditId !== null && currentEditId > 1000000) {
+      alert("Please wait a moment for the database to finish syncing before editing this new entry.");
+      return;
+  }
+  
   const clfSel = document.getElementById(prefix + 'CLF');
   const ds = document.getElementById(prefix + 'Date').value;
   const monSelected = document.getElementById(prefix + 'Month').value;
@@ -958,7 +964,9 @@ async function saveEntry(type){
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload) 
     });
-    setTimeout(loadDashboardData, 2000); 
+    
+    // Increased timeout to allow Google Sheets plenty of time to process the update
+    setTimeout(loadDashboardData, 4500); 
   } catch (error) {
     alert("Warning: Could not communicate with Google Sheets. Please check your network connection.");
   }
