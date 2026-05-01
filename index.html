@@ -4,8 +4,12 @@
 <meta charset="UTF-8">
 <title>CLF Dashboard</title>
 
+<!-- Fix for the annoying Favicon 404 error -->
 <link rel="icon" href="data:,">
 
+<!-- ========================================== -->
+<!-- REQUIRED LIBRARIES (GUARANTEED LOAD FIRST) -->
+<!-- ========================================== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -442,7 +446,7 @@ const APP_PASSWORD = "NRLM2026";
 // ==========================================
 
 // ==========================================
-// 📄 SET YOUR "TO DO LIST 2026" SHEET ID HERE
+// 📄 EXACT TO DO LIST 2026 SHEET ID
 const TODO_LIST_SHEET_ID = "1hpt7zF16diAuIyof8OfoT7XSb7OqVgEsrcA_-OaXW1s"; 
 // ==========================================
 
@@ -450,6 +454,19 @@ const TODO_LIST_SHEET_ID = "1hpt7zF16diAuIyof8OfoT7XSb7OqVgEsrcA_-OaXW1s";
 // 📋 SET YOUR "ASSIGN STAFF" LINK HERE
 const ASSIGN_STAFF_LINK = "PASTE_ASSIGN_STAFF_LINK_HERE"; 
 // ==========================================
+
+async function fetchWithRetry(url, options = {}, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, options);
+      return response;
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      console.warn(`Network drop detected. Retrying connection (${i + 1}/${retries})...`);
+      await new Promise(res => setTimeout(res, 1000 * (i + 1))); 
+    }
+  }
+}
 
 function checkPassword() {
   const val = document.getElementById('passInput').value;
@@ -472,7 +489,6 @@ function verifySession() {
   }
 }
 
-// --- OPEN PDF TO DO LIST FUNCTION ---
 function openToDoListPDF() {
   if(!TODO_LIST_SHEET_ID || TODO_LIST_SHEET_ID.includes("PASTE_YOUR")) {
     alert("System Admin: Please paste the Google Sheet ID for the TO DO LIST into the script code (TODO_LIST_SHEET_ID) to enable this feature.");
@@ -482,7 +498,6 @@ function openToDoListPDF() {
   window.open(pdfUrl, '_blank');
 }
 
-// --- OPEN ASSIGN STAFF FUNCTION ---
 function openAssignStaff() {
   if(ASSIGN_STAFF_LINK === "PASTE_ASSIGN_STAFF_LINK_HERE" || !ASSIGN_STAFF_LINK) {
     alert("System Admin: Please paste the link to your Staff Assignment sheet or form into the script code (ASSIGN_STAFF_LINK) to enable this feature.");
@@ -561,7 +576,7 @@ async function loadDashboardData() {
     document.getElementById('sheetStatus').textContent = 'Fetching data...';
     document.getElementById('sheetStatus').style.color = 'var(--text3)';
 
-    const response = await fetch(GOOGLE_SHEET_API_URL);
+    const response = await fetchWithRetry(GOOGLE_SHEET_API_URL);
     const rawText = await response.text(); 
     
     let data;
@@ -576,9 +591,19 @@ async function loadDashboardData() {
         return key ? row[key] : '';
       };
 
+      // --- 🚨 AGGRESSIVE GHOST ROW FILTER 🚨 ---
+      let checkBlock = String(getCol('Block')).replace(/undefined/gi, '').trim();
+      let checkClf = String(getCol('CLFName') || getCol('CLF Name') || '').replace(/undefined/gi, '').trim();
+      let checkDate = String(getCol('Date') || getCol('MeetingDate') || '').replace(/undefined/gi, '').trim();
+
+      if (checkBlock === "" && checkClf === "" && checkDate === "") {
+        return; 
+      }
+      // ------------------------------------------
+
       let explicitMonth = getCol('Month');
       let monthName;
-      if (explicitMonth) {
+      if (explicitMonth && String(explicitMonth).trim() !== "undefined") {
           monthName = String(explicitMonth).trim();
       } else {
           let meetingDateRaw = getCol('MeetingDate') || getCol('Date');
@@ -648,7 +673,8 @@ async function loadDashboardData() {
     if(document.getElementById('tab-charts').style.display !== 'none') renderCharts();
 
   } catch (e) {
-    document.getElementById('sheetStatus').textContent = 'Sheet sync failed. Check console.';
+    console.error("Dashboard Load Error:", e);
+    document.getElementById('sheetStatus').textContent = 'Network Error. Retrying connection...';
     document.getElementById('sheetStatus').style.color = 'var(--red)';
   }
 }
@@ -744,6 +770,33 @@ function openAssignModal(){
   populateAssignCLF(); 
 }
 function closeAssignModal(){document.getElementById('assignModalBg').classList.remove('open');}
+
+// --- NEW EDIT PLAN FUNCTION ---
+function editPlan(id) {
+   const p = entries.find(e => e.id === id);
+   if(!p) return;
+   
+   currentEditId = id; // Lock in the ID so saveEntry knows to update the existing row!
+   
+   document.getElementById('assignModalBg').classList.add('open');
+   
+   // Pre-fill the Assign modal with existing data
+   setTimeout(() => {
+     document.getElementById('aMonth').value = p.month;
+     document.getElementById('aBlock').value = p.block;
+     populateAssignCLF();
+     
+     setTimeout(() => {
+        document.getElementById('aCLF').value = p.clfName;
+        document.getElementById('aStaff').value = p.staff || '';
+        document.getElementById('aStaffIncharge').value = p.staffIncharge || '';
+        document.getElementById('aDate').value = p.date || '';
+        document.getElementById('aTime').value = p.time || '';
+        document.getElementById('aUnit').value = p.unit || 'DMMU';
+        document.getElementById('aInstructions').value = p.findings === 'NII' ? '' : p.findings; 
+     }, 50);
+   }, 50);
+}
 
 function logFromPlan(id) {
    const p = entries.find(e => e.id === id);
@@ -856,7 +909,7 @@ async function saveEntry(type){
   updateHeader(); renderOverview(); renderPlans(); renderTracker(); renderStaff();
   
   try {
-    await fetch(GOOGLE_SHEET_API_URL, {
+    await fetchWithRetry(GOOGLE_SHEET_API_URL, {
       method: 'POST',
       mode: 'no-cors', 
       headers: { 'Content-Type': 'text/plain' },
@@ -864,7 +917,7 @@ async function saveEntry(type){
     });
     setTimeout(loadDashboardData, 2000); 
   } catch (error) {
-    alert("Warning: Could not communicate with Google Sheets.");
+    alert("Warning: Could not communicate with Google Sheets. Please check your network connection.");
   }
 }
 
@@ -884,6 +937,7 @@ function getFiltered(){
 
 function statusBadge(s){const m={Done:'s-done',Pending:'s-pending',Missed:'s-missed',Planned:'s-planned'};return`<span class="status ${m[s.trim()]||'s-pending'}">${s.trim()}</span>`;}
 
+// --- UPDATED RENDER PLANS TO INCLUDE EDIT BUTTON ---
 function renderPlans(){
   const sf=document.getElementById('planFilterStaff')?.value;
   let d = entries.filter(e => e.status === 'Planned');
@@ -906,7 +960,10 @@ function renderPlans(){
     <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--amber);font-size:12px" title="${e.findings}">${e.findings}</td>
     <td>${statusBadge(e.status)}</td>
     <td>
-      <button style="font-size:11px; padding:3px 8px; border-color:var(--green2); color:var(--green2); background:transparent; cursor:pointer;" onclick="logFromPlan(${e.id})">✔ Log</button>
+      <div style="display:flex; gap:5px;">
+        <button style="font-size:11px; padding:3px 8px; border-color:var(--amber); color:var(--amber); background:transparent; cursor:pointer;" onclick="editPlan(${e.id})">✏️ Edit</button>
+        <button style="font-size:11px; padding:3px 8px; border-color:var(--green2); color:var(--green2); background:transparent; cursor:pointer;" onclick="logFromPlan(${e.id})">✔ Log</button>
+      </div>
     </td>
   </tr>`).join('');
 }
