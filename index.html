@@ -372,7 +372,8 @@ textarea{width:100%;resize:vertical;min-height:70px}
     <h2 style="margin-bottom:20px;color:var(--green2)" id="modalTitle">&#9670; Log CLF Visit</h2>
     
     <div class="form-row">
-      <div><label>MONTH</label><select id="fMonth" style="width:100%"></select></div>
+      <!-- Added dynamic onchange to Month -->
+      <div><label>MONTH</label><select id="fMonth" style="width:100%" onchange="populateCLF()"></select></div>
       <div><label>BLOCK</label><select id="fBlock" style="width:100%" onchange="populateCLF()"></select></div>
     </div>
     <div class="form-row full">
@@ -410,7 +411,8 @@ textarea{width:100%;resize:vertical;min-height:70px}
     <h2 style="margin-bottom:20px;color:var(--blue)">📋 Assign Staff to Meeting</h2>
     
     <div class="form-row">
-      <div><label>MONTH</label><select id="aMonth" style="width:100%"></select></div>
+      <!-- Added dynamic onchange to Month -->
+      <div><label>MONTH</label><select id="aMonth" style="width:100%" onchange="populateAssignCLF()"></select></div>
       <div><label>BLOCK</label><select id="aBlock" style="width:100%" onchange="populateAssignCLF()"></select></div>
     </div>
     <div class="form-row full">
@@ -591,7 +593,6 @@ async function loadDashboardData() {
         return key ? row[key] : '';
       };
 
-      // --- 🚨 AGGRESSIVE GHOST ROW FILTER 🚨 ---
       let checkBlock = String(getCol('Block')).replace(/undefined/gi, '').trim();
       let checkClf = String(getCol('CLFName') || getCol('CLF Name') || '').replace(/undefined/gi, '').trim();
       let checkDate = String(getCol('Date') || getCol('MeetingDate') || '').replace(/undefined/gi, '').trim();
@@ -599,7 +600,6 @@ async function loadDashboardData() {
       if (checkBlock === "" && checkClf === "" && checkDate === "") {
         return; 
       }
-      // ------------------------------------------
 
       let explicitMonth = getCol('Month');
       let monthName;
@@ -710,26 +710,75 @@ function initSelects(){
   populateAssignCLF();
 }
 
+// --- DYNAMIC CLF FILTERING LOGIC ---
 function populateCLF(){
   const b = document.getElementById('fBlock').value;
+  const m = document.getElementById('fMonth').value;
   const sel = document.getElementById('fCLF');
   if(!sel) return;
   sel.innerHTML = ''; 
   const clfs = CLF_DATA[b] || [];
+  
+  // Find CLFs already in the database for this specific month
+  const assigned = entries
+    .filter(e => e.month === m && e.id !== currentEditId)
+    .map(e => e.clfName);
+    
+  let added = 0;
   clfs.forEach(c => {
-    const o = document.createElement('option'); o.value = c.name; o.dataset.code = c.code; o.textContent = c.name; sel.appendChild(o);
+    // Only display the CLF if it is NOT currently assigned!
+    if(!assigned.includes(c.name)) {
+        const o = document.createElement('option'); 
+        o.value = c.name; 
+        o.dataset.code = c.code; 
+        o.textContent = c.name; 
+        sel.appendChild(o);
+        added++;
+    }
   });
+  
+  // Clean fallback message if all CLFs are already assigned
+  if(added === 0) {
+     const o = document.createElement('option'); 
+     o.textContent = 'All CLFs logged/assigned for this month'; 
+     o.disabled = true; 
+     sel.appendChild(o);
+  }
 }
 
 function populateAssignCLF(){
   const b = document.getElementById('aBlock').value;
+  const m = document.getElementById('aMonth').value;
   const sel = document.getElementById('aCLF');
   if(!sel) return;
   sel.innerHTML = ''; 
   const clfs = CLF_DATA[b] || [];
+  
+  // Find CLFs already in the database for this specific month
+  const assigned = entries
+    .filter(e => e.month === m && e.id !== currentEditId)
+    .map(e => e.clfName);
+    
+  let added = 0;
   clfs.forEach(c => {
-    const o = document.createElement('option'); o.value = c.name; o.dataset.code = c.code; o.textContent = c.name; sel.appendChild(o);
+    // Only display the CLF if it is NOT currently assigned!
+    if(!assigned.includes(c.name)) {
+        const o = document.createElement('option'); 
+        o.value = c.name; 
+        o.dataset.code = c.code; 
+        o.textContent = c.name; 
+        sel.appendChild(o);
+        added++;
+    }
   });
+  
+  // Clean fallback message if all CLFs are already assigned
+  if(added === 0) {
+     const o = document.createElement('option'); 
+     o.textContent = 'All CLFs assigned for this month'; 
+     o.disabled = true; 
+     sel.appendChild(o);
+  }
 }
 
 function switchTab(name,el){
@@ -771,16 +820,13 @@ function openAssignModal(){
 }
 function closeAssignModal(){document.getElementById('assignModalBg').classList.remove('open');}
 
-// --- NEW EDIT PLAN FUNCTION ---
 function editPlan(id) {
    const p = entries.find(e => e.id === id);
    if(!p) return;
    
-   currentEditId = id; // Lock in the ID so saveEntry knows to update the existing row!
-   
+   currentEditId = id; 
    document.getElementById('assignModalBg').classList.add('open');
    
-   // Pre-fill the Assign modal with existing data
    setTimeout(() => {
      document.getElementById('aMonth').value = p.month;
      document.getElementById('aBlock').value = p.block;
@@ -937,7 +983,6 @@ function getFiltered(){
 
 function statusBadge(s){const m={Done:'s-done',Pending:'s-pending',Missed:'s-missed',Planned:'s-planned'};return`<span class="status ${m[s.trim()]||'s-pending'}">${s.trim()}</span>`;}
 
-// --- UPDATED RENDER PLANS TO INCLUDE EDIT BUTTON ---
 function renderPlans(){
   const sf=document.getElementById('planFilterStaff')?.value;
   let d = entries.filter(e => e.status === 'Planned');
